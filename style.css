@@ -111,12 +111,22 @@ img, svg, video, canvas {
     display: block;
 }
 
+/* NOTE: will left-align on small screens below */
 .section-body p, .card p, .text-secondary, .text-body-secondary {
     line-height: 1.6;
     text-wrap: pretty;
     text-align: justify;
     text-justify: inter-word;
     hyphens: auto;
+}
+
+/* Mobile readability: avoid rivers from forced justification */
+@media (max-width: 575.98px) {
+    .section-body p, .card p, .text-secondary, .text-body-secondary {
+        text-align: left;
+        text-justify: auto;
+        hyphens: auto;
+    }
 }
 
 .visually-hidden {
@@ -620,6 +630,11 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     transform: scaleX(var(--progress));
     background: linear-gradient(90deg, #2f7d5a, #3b8f73);
     will-change: transform, opacity;
+}
+
+/* NEW: wire the JS-driven .animate class to a real transition using --ri-duration */
+#reload-indicator .fill.animate {
+    transition: transform var(--ri-duration, 900ms) var(--ease-standard);
 }
 
 #reload-indicator.waiting .fill {
@@ -1132,6 +1147,13 @@ body[aria-busy="true"]> :not(#page-skeleton) {
 @keyframes blinkCaret {
     50% {
         opacity: 0;
+    }
+}
+
+/* Respect reduced-motion for the caret explicitly (in addition to global rule) */
+@media (prefers-reduced-motion: reduce) {
+    .type-caret {
+        animation: none !important;
     }
 }
 
@@ -1687,12 +1709,16 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     border-width: 1px;
 }
 
+/* FIX: remove hard height; use max-height so JS can clamp/animate safely */
 .rc-expander {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 80%;
+    /* was: height: 80%; */
+    height: auto;
+    max-height: min(80vh, 720px);
+    /* JS may override inline via setExpanderMaxHeight */
     transform: translate3d(0, 100%, 0);
     background: linear-gradient(180deg, var(--expander-bg-1) 0%, var(--expander-bg-2) 55%, #ffffff 100%);
     border-top: 1px solid rgba(0, 0, 0, .08);

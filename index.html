@@ -12,7 +12,9 @@
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
         <!-- Icons (deduped: keep Bootstrap Icons + FA Brands only) -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <!-- Replaced FA all.min.css with core + brands only -->
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/brands.min.css" rel="stylesheet">
         <!-- Bootstrap (CSS only) -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <!-- App styles -->
@@ -27,7 +29,8 @@
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
     </head>
     <body>
-        <a class="skip-link" id="skipLink" href="#home">Skip to content</a>
+        <!-- Skip to Main Content (target main landmark) -->
+        <a class="skip-link" id="skipLink" href="#main-content">Skip to content</a>
         <!-- Back to Top -->
         <button
             id="backToTop"
@@ -133,7 +136,12 @@
             </div>
             <div tabindex="0" data-sentinel="end"></div>
         </aside>
-        <main id="main-content" role="main" aria-label="Main content">
+        <main
+            id="main-content"
+            role="main"
+            aria-label="Main content"
+            tabindex="-1"
+        >
             <h1 class="visually-hidden" id="site-title">Rahat Portfolio</h1>
             <!-- HOME -->
             <section
@@ -147,17 +155,19 @@
                     <div class="container px-2 px-sm-3">
                         <div class="row align-items-center hero-row justify-content-center">
                             <div class="col-12 col-lg-6 g-3">
-                                <div class="hero-copy text-center text-lg-center text-md-center">
+                                <!-- Removed center utility classes; CSS controls alignment per breakpoint -->
+                                <div class="hero-copy">
                                     <span class="availability-badge no-wrap-badge" aria-live="polite">
                                         <span class="dot" aria-hidden="true"></span>
                                         <span>Available for opportunities</span>
                                     </span>
-                                    <h2 class="hero-h1 text-center">Hey There,</h2>
-                                    <h3 class="hero-h2 text-center">
+                                    <h2 class="hero-h1">Hey There,</h2>
+                                    <h3 class="hero-h2">
                                         I’m
                                         <span class="name underline" data-underline="true">Rahat</span>
                                     </h3>
-                                    <div class="hero-typewrap justify-content-center">
+                                    <!-- Let CSS handle justification; JS manages aria-live behavior -->
+                                    <div class="hero-typewrap">
                                         <span id="typewriter" class="typewriter" data-phrases="An Environmental Expert|A GIS Enthusiast|A Research Aspirant|A Data Analyst"></span>
                                         <span class="type-caret" aria-hidden="true"></span>
                                     </div>
@@ -171,7 +181,7 @@
                                             <span>Get In Touch</span>
                                         </a>
                                     </div>
-                                    <nav class="hero-contacts justify-content-center" aria-label="Quick contacts">
+                                    <nav class="hero-contacts" aria-label="Quick contacts">
                                         <a class="hc-item" href="tel:+8801304693548" aria-label="Call mobile number">
                                             <span class="hc-icon">
                                                 <i class="bi bi-telephone-fill" aria-hidden="true"></i>
@@ -338,7 +348,8 @@
                                                 </div>
                                                 <h4 class="cv-title">Sustainability Focus</h4>
                                                 <details class="cv-reveal" data-cv>
-                                                    <summary class="cv-info-btn" aria-label="Show description" aria-expanded="false">
+                                                    <!-- Removed aria-expanded; rely on native details state -->
+                                                    <summary class="cv-info-btn" aria-label="Show description">
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
                                                     <div class="cv-popover" role="tooltip">
@@ -357,7 +368,7 @@
                                                 </div>
                                                 <h4 class="cv-title">Collaborative Spirit</h4>
                                                 <details class="cv-reveal" data-cv>
-                                                    <summary class="cv-info-btn" aria-label="Show description" aria-expanded="false">
+                                                    <summary class="cv-info-btn" aria-label="Show description">
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
                                                     <div class="cv-popover" role="tooltip">
@@ -376,7 +387,7 @@
                                                 </div>
                                                 <h4 class="cv-title">Innovation Driven</h4>
                                                 <details class="cv-reveal" data-cv>
-                                                    <summary class="cv-info-btn" aria-label="Show description" aria-expanded="false">
+                                                    <summary class="cv-info-btn" aria-label="Show description">
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
                                                     <div class="cv-popover" role="tooltip">
@@ -1202,7 +1213,13 @@
             <span class="fill"></span>
         </div>
         <div id="page-skeleton" aria-hidden="true" hidden>
-            <div class="skel-center" role="status" aria-live="polite">
+            <!-- Focusable center chip for accessibility when skeleton is shown -->
+            <div
+                class="skel-center"
+                role="status"
+                aria-live="polite"
+                tabindex="-1"
+            >
                 <span class="skel-spinner" aria-hidden="true"></span>
                 <span>Loading portfolio…</span>
             </div>
@@ -1217,7 +1234,7 @@
                 <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
             </div>
         </div>
-        <!-- Removed aria-live from the stack to avoid duplicate SR announcements -->
+        <!-- Removed aria-live from the stack to avoid duplicate SR announcements; toasts set role/status themselves -->
         <div id="toast-stack" aria-atomic="true"></div>
         <noscript>
             <div style="

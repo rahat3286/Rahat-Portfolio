@@ -1,15 +1,15 @@
 "use strict";
 
 /* ============================================================================
-   Rahat Portfolio — App JS (fixed)
+   Rahat Portfolio — App JS (refined)
    - Desktop slide-mode with per-section scroll memory
    - Mobile smooth-scroll + active nav sync
    - Right drawer with focus trapping (a11y)
-   - Research card expanders
-   - Skills progress animation on view
+   - Research card expanders (max-height, safer toggles)
+   - Skills progress animation on view (one-shot; respects R.M.)
    - Contact form with EmailJS + mailto fallback
-   - Toast system, typewriter, hero image fallback, skeleton/progress
-   - UI-ready safety so animated brand/hero never disappear
+   - Toast system, typewriter (a11y), hero image fallback
+   - Skeleton/progress bar wiring and UI-ready safety
 ============================================================================ */
 
 /* ========= CONFIG / UTILS ========= */
@@ -79,6 +79,7 @@ let saveScrollRAF = 0;
 const sectionScroll = new Map();
 
 /* ========= PROGRESS BAR / SKELETON ========= */
+/** Attach CSS-driven transition to the fill using the .animate class (see style.css) */
 function setIndicatorProgress(p) {
     indicatorEl?.style.setProperty("--progress", String(p));
 }
@@ -87,10 +88,7 @@ function playTo(target, ms = 900) {
     indicatorEl.classList.add("visible");
     const fill = indicatorEl.querySelector(".fill");
     fill?.classList.remove("animate");
-    indicatorEl.style.setProperty(
-        "--ri-duration",
-        prefersReducedMotion() ? "1ms" : `${ms}ms`
-    );
+    indicatorEl.style.setProperty("--ri-duration", prefersReducedMotion() ? "1ms" : `${ms}ms`);
     requestAnimationFrame(() => {
         fill?.classList.add("animate");
         setIndicatorProgress(target);
@@ -120,12 +118,10 @@ function showSkeleton() {
     skeletonVisible = true;
     startIndicatorHold();
 }
-
 function markUiReady() {
     document.documentElement.classList.add("ui-ready");
     visualsReady = true;
 }
-
 function hideSkeleton() {
     if (!skeletonEl) return;
     skeletonEl.dataset.visible = "false";
@@ -134,7 +130,7 @@ function hideSkeleton() {
     completeIndicator();
     setTimeout(() => {
         skeletonEl.hidden = true;
-        markUiReady(); // <-- ensures animated brand/hero stay visible
+        markUiReady(); // ensures animated brand/hero end state sticks
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
         maybeStartTypewriter();
@@ -168,9 +164,7 @@ function restoreSectionScroll(target) {
 function applyDynamicHeadingClearance() {
     sections.forEach((section) => {
         const heading = $(".section-heading", section);
-        const h =
-            (heading && (heading.getBoundingClientRect().height || heading.offsetHeight)) ||
-            0;
+        const h = (heading && (heading.getBoundingClientRect().height || heading.offsetHeight)) || 0;
         section.style.setProperty("--dynamic-clear", `${Math.ceil(h + 24)}px`);
     });
 }
@@ -179,16 +173,12 @@ function syncActiveUI(targetId) {
     sidebarLinks.forEach((a) => {
         const active = getTargetFrom(a) === targetId;
         a.dataset.active = active ? "true" : "false";
-        active
-            ? a.setAttribute("aria-current", "page")
-            : a.removeAttribute("aria-current");
+        active ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
     });
     sliderItems.forEach((btn) => {
         const active = getTargetFrom(btn) === targetId;
         btn.dataset.active = active ? "true" : "false";
-        active
-            ? btn.setAttribute("aria-current", "page")
-            : btn.removeAttribute("aria-current");
+        active ? btn.setAttribute("aria-current", "page") : btn.removeAttribute("aria-current");
     });
 }
 
@@ -233,6 +223,7 @@ function setupIntersectionObserver() {
                 if (navLock) return;
                 const visible = entries.filter((e) => e.isIntersecting);
                 if (!visible.length) return;
+                // Prefer the first visible from top, break ties by bigger ratio
                 visible.sort((a, b) => {
                     const da = a.boundingClientRect.top;
                     const db = b.boundingClientRect.top;
@@ -273,9 +264,7 @@ function setupIntersectionObserver() {
 
 function initMode({ initialId = null, preserveScroll = false } = {}) {
     const startId =
-        (location.hash &&
-            document.getElementById(location.hash.slice(1)) &&
-            location.hash.slice(1)) ||
+        (location.hash && document.getElementById(location.hash.slice(1)) && location.hash.slice(1)) ||
         initialId ||
         sections[0]?.id ||
         "home";
@@ -311,9 +300,7 @@ function trapFocus(container) {
             return;
         }
         if (e.key !== "Tab") return;
-        const focusables = $$(FOCUSABLE, container).filter(
-            (el) => el.offsetParent !== null
-        );
+        const focusables = $$(FOCUSABLE, container).filter((el) => el.offsetParent !== null);
         if (!focusables.length) return;
         const [first, last] = [focusables[0], focusables[focusables.length - 1]];
         if (e.shiftKey && document.activeElement === first) {
@@ -370,7 +357,7 @@ function showToast({ type = "success", title = "", message = "" } = {}) {
     <div class="icon">${type === "success" ? "✅" : type === "danger" ? "❗" : type === "warning" ? "⚠️" : "ℹ️"}</div>
     <div class="content"><strong>${title || (type === "success" ? "Success" : "Notice")}</strong> ${message}</div>
     <button class="close" type="button" aria-label="Close">&times;</button>
-  `;
+  `.trim();
     const remove = () => {
         toast.classList.add("hide");
         setTimeout(() => toast.remove(), prefersReducedMotion() ? 0 : 220);
@@ -418,8 +405,9 @@ function closeAnyOpenResearch(exceptArticle = null) {
 function setExpanderMaxHeight(article) {
     const expander = $(".rc-expander", article);
     if (!expander) return;
-    const h = Math.max(240, Math.floor(article.clientHeight * 0.8));
-    expander.style.maxHeight = `${h}px`;
+    // Clamp to viewport, avoid overflows, CSS has a sensible default too
+    const maxH = Math.max(240, Math.floor(Math.min(window.innerHeight * 0.8, article.clientHeight * 0.8)));
+    expander.style.maxHeight = `${maxH}px`;
 }
 function adjustOpenResearchExpander() {
     const open = $(".research-card[data-open='true']");
@@ -620,7 +608,9 @@ const EMAILJS_CFG = {
 function initEmailJS() {
     try {
         if (window.emailjs) emailjs.init({ publicKey: EMAILJS_CFG.PUBLIC_KEY });
-    } catch { /* ignore */ }
+    } catch {
+        /* ignore */
+    }
 }
 
 function setupContactForm() {
@@ -698,11 +688,7 @@ function setupContactForm() {
                 message: payload.message,
                 sentAt: payload.sentAt,
             };
-            const res = await emailjs.send(
-                EMAILJS_CFG.SERVICE_ID,
-                EMAILJS_CFG.TEMPLATE_ID,
-                params
-            );
+            const res = await emailjs.send(EMAILJS_CFG.SERVICE_ID, EMAILJS_CFG.TEMPLATE_ID, params);
             return { ok: true, emailjsStatus: res?.status || 200 };
         } catch (err) {
             return { ok: false, reason: "emailjs-error", error: err };
@@ -712,9 +698,7 @@ function setupContactForm() {
     const fallbackMailto = (payload) => {
         const to = form.dataset.mailto?.trim() || "rahat3286@gmail.com";
         const subject = encodeURIComponent(`Portfolio message from ${payload.name}`);
-        const body = encodeURIComponent(
-            `${payload.message}\n\n— ${payload.name} <${payload.email}>`
-        );
+        const body = encodeURIComponent(`${payload.message}\n\n— ${payload.name} <${payload.email}>`);
         location.href = `mailto:${to}?subject=${subject}&body=${body}`;
         return { ok: true, fallback: "mailto" };
     };
@@ -807,7 +791,9 @@ function setupTelToasts() {
                         message: "Phone number copied to clipboard. Opening dialer…",
                     });
                 }
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore copy errors */
+            }
         },
         { passive: false }
     );
@@ -932,10 +918,7 @@ function measureFit(scopeEl) {
     const inner = wrapForFit(scopeEl);
     if (!inner) return;
     inner.style.setProperty("--fit", "1");
-    const available = Math.max(
-        1,
-        scopeEl.clientWidth || scopeEl.getBoundingClientRect().width || 1
-    );
+    const available = Math.max(1, scopeEl.clientWidth || scopeEl.getBoundingClientRect().width || 1);
     const natural = Math.max(inner.scrollWidth, inner.getBoundingClientRect().width || 1);
     const scale = natural <= 1 ? 1 : clamp(available / natural, 0.6, 1.05);
     inner.style.setProperty("--fit", String(scale));
@@ -953,7 +936,9 @@ function initContactAutoFit() {
             fitRO = new ResizeObserver(() => fitContactText());
             $$(".ci-item").forEach((item) => fitRO.observe(item));
         }
-    } catch { /* ignore */ }
+    } catch {
+        /* ignore */
+    }
     window.addEventListener("resize", fitContactText, { passive: true });
     window.addEventListener("orientationchange", fitContactText, { passive: true });
     if (document.fonts?.ready) document.fonts.ready.then(() => fitContactText());
@@ -997,14 +982,15 @@ function saveScrollState() {
         }
         try {
             sessionStorage.setItem(SCROLL_KEY, JSON.stringify(state));
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
     });
 }
 function restoreSavedScrollIfAny() {
     const saved = readSavedScroll();
     if (!saved) return;
-    const targetId =
-        (saved.id && document.getElementById(saved.id)) ? saved.id : currentId || sections[0]?.id;
+    const targetId = (saved.id && document.getElementById(saved.id)) ? saved.id : currentId || sections[0]?.id;
     showSection(targetId, true, { preserveScroll: true });
     if (isDesktop()) {
         const active = getActiveSectionEl();
@@ -1116,6 +1102,7 @@ document.addEventListener(
     },
     { passive: true }
 );
+
 document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && rightSlider?.dataset.open === "true") setMenuOpen(false);
 });
@@ -1128,9 +1115,7 @@ if (skipLink) {
             e.preventDefault();
             showSection(id, true);
         } else {
-            requestAnimationFrame(() =>
-                document.getElementById(id)?.focus({ preventScroll: true })
-            );
+            requestAnimationFrame(() => document.getElementById(id)?.focus({ preventScroll: true }));
         }
     });
 }
@@ -1192,7 +1177,9 @@ window.addEventListener("DOMContentLoaded", () => {
     try {
         const shouldOpen = sessionStorage.getItem(MENU_STORAGE_KEY) === "1";
         if (shouldOpen && !isDesktop()) setMenuOpen(true, { animate: false, focus: false, persist: false });
-    } catch { /* ignore */ }
+    } catch {
+        /* ignore */
+    }
 
     setupResearchCards();
     setupCoreValues();
@@ -1226,7 +1213,7 @@ window.addEventListener("load", () => {
         indicatorEl?.classList.remove("waiting");
         playTo(1, 600);
         setTimeout(() => indicatorEl?.classList.remove("visible"), prefersReducedMotion() ? 0 : 600);
-        markUiReady(); // <-- guarantees animations end-state sticks
+        markUiReady(); // guarantees animations end-state sticks
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
         maybeStartTypewriter();
