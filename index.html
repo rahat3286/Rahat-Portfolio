@@ -10,9 +10,8 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
-        <!-- Icons (deduped: keep Bootstrap Icons + FA Brands only) -->
+        <!-- Icons (Bootstrap Icons + FA Brands only) -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-        <!-- Replaced FA all.min.css with core + brands only -->
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/brands.min.css" rel="stylesheet">
         <!-- Bootstrap (CSS only) -->
@@ -21,7 +20,7 @@
         <link rel="preload" as="image" href="hero-image.png">
         <link rel="stylesheet" href="style.css">
         <script>
-      // flip no-js -> js ASAP
+      // flip no-js -> js ASAP (before paint)
       document.documentElement.classList.remove("no-js");
       document.documentElement.classList.add("js");
         </script>
@@ -39,7 +38,7 @@
             aria-label="Back to top"
             title="Back to top"
         >
-            <span>↑</span>
+            <span aria-hidden="true">↑</span>
         </button>
         <!-- Sidebar (desktop) -->
         <nav
@@ -136,6 +135,7 @@
             </div>
             <div tabindex="0" data-sentinel="end"></div>
         </aside>
+        <!-- Main content -->
         <main
             id="main-content"
             role="main"
@@ -155,7 +155,6 @@
                     <div class="container px-2 px-sm-3">
                         <div class="row align-items-center hero-row justify-content-center">
                             <div class="col-12 col-lg-6 g-3">
-                                <!-- Removed center utility classes; CSS controls alignment per breakpoint -->
                                 <div class="hero-copy">
                                     <span class="availability-badge no-wrap-badge" aria-live="polite">
                                         <span class="dot" aria-hidden="true"></span>
@@ -166,7 +165,6 @@
                                         I’m
                                         <span class="name underline" data-underline="true">Rahat</span>
                                     </h3>
-                                    <!-- Let CSS handle justification; JS manages aria-live behavior -->
                                     <div class="hero-typewrap">
                                         <span id="typewriter" class="typewriter" data-phrases="An Environmental Expert|A GIS Enthusiast|A Research Aspirant|A Data Analyst"></span>
                                         <span class="type-caret" aria-hidden="true"></span>
@@ -348,7 +346,6 @@
                                                 </div>
                                                 <h4 class="cv-title">Sustainability Focus</h4>
                                                 <details class="cv-reveal" data-cv>
-                                                    <!-- Removed aria-expanded; rely on native details state -->
                                                     <summary class="cv-info-btn" aria-label="Show description">
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
@@ -476,7 +473,7 @@
                                                 aria-hidden="true"
                                             >
                                                 <button class="rc-close" type="button" aria-label="Close details">
-                                                    <i class="bi bi-x"></i>
+                                                    <i class="bi bi-x" aria-hidden="true"></i>
                                                 </button>
                                                 <div class="rc-expander-inner">
                                                     <div class="rc-expander-body">
@@ -553,7 +550,7 @@
                                                 aria-hidden="true"
                                             >
                                                 <button class="rc-close" type="button" aria-label="Close details">
-                                                    <i class="bi bi-x"></i>
+                                                    <i class="bi bi-x" aria-hidden="true"></i>
                                                 </button>
                                                 <div class="rc-expander-inner">
                                                     <div class="rc-expander-body">
@@ -994,24 +991,12 @@
                   conservation.
                                 </p>
                                 <div class="d-flex flex-wrap justify-content-center gap-2 gap-sm-3 my-3 my-md-4">
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Environmental Consultancy
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        GIS Mapping &amp; Analysis
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Research &amp; Data Analysis
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Environmental Impact Assessments
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Climate Data Interpretation
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Sustainable Resource Management
-                                    </button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Environmental Consultancy</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">GIS Mapping &amp; Analysis</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Research &amp; Data Analysis</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Environmental Impact Assessments</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Climate Data Interpretation</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Sustainable Resource Management</button>
                                 </div>
                                 <div class="cta-bar mx-auto text-center">
                                     <div class="fw-semibold">Ready to Collaborate?</div>
@@ -1135,7 +1120,7 @@
                                     <div class="card-body p-3 p-sm-4 p-md-5">
                                         <div class="d-flex align-items-center gap-2 gap-sm-3 mb-2 mb-sm-3">
                                             <div class="icon-badge">
-                                                <i class="bi bi-send"></i>
+                                                <i class="bi bi-send" aria-hidden="true"></i>
                                             </div>
                                             <h3 class="m-0 card-title text-success-emphasis">Send Message</h3>
                                         </div>
@@ -1196,7 +1181,7 @@
                                                 <div class="invalid-feedback">Please enter at least 10 characters.</div>
                                             </div>
                                             <button id="contactSubmit" type="submit" class="btn btn-success btn-lg w-100 d-inline-flex align-items-center justify-content-center gap-2">
-                                                <i class="bi bi-send"></i>
+                                                <i class="bi bi-send" aria-hidden="true"></i>
                                                 <span>Send Message</span>
                                             </button>
                                         </form>
@@ -1212,45 +1197,51 @@
         <div id="reload-indicator" aria-hidden="true">
             <span class="fill"></span>
         </div>
+        <!-- Refined Skeleton (no spinner; realistic layout placeholders) -->
         <div id="page-skeleton" aria-hidden="true" hidden>
-            <!-- Focusable center chip for accessibility when skeleton is shown -->
             <div
                 class="skel-center"
                 role="status"
                 aria-live="polite"
                 tabindex="-1"
             >
-                <span class="skel-spinner" aria-hidden="true"></span>
                 <span>Loading portfolio…</span>
             </div>
             <div class="skel-topbar skel-shimmer"></div>
             <div class="skel-sidebar skel-shimmer"></div>
-            <div class="skel-content">
-                <div class="skel-shimmer" style="height: 28px; border-radius: 8px"></div>
-                <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
-                <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
-                <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
-                <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
-                <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
+            <!-- Structured skeleton content: hero + cards -->
+            <div class="skel-main">
+                <section class="skel-hero">
+                    <div class="skel-hero-text">
+                        <div class="skel-line lg skel-shimmer"></div>
+                        <div class="skel-line md skel-shimmer"></div>
+                        <div class="skel-line sm skel-shimmer"></div>
+                        <div class="skel-cta skel-shimmer"></div>
+                        <div class="skel-icons">
+                            <span class="skel-icon skel-shimmer"></span>
+                            <span class="skel-icon skel-shimmer"></span>
+                            <span class="skel-icon skel-shimmer"></span>
+                            <span class="skel-icon skel-shimmer"></span>
+                        </div>
+                    </div>
+                    <div class="skel-hero-figure skel-shimmer"></div>
+                </section>
+                <section class="skel-grid">
+                    <div class="skel-card skel-shimmer"></div>
+                    <div class="skel-card skel-shimmer"></div>
+                    <div class="skel-card skel-shimmer"></div>
+                </section>
             </div>
         </div>
-        <!-- Removed aria-live from the stack to avoid duplicate SR announcements; toasts set role/status themselves -->
+        <!-- Toast stack -->
         <div id="toast-stack" aria-atomic="true"></div>
         <noscript>
-            <div style="
-          position: fixed;
-          inset: 0;
-          z-index: 9999;
-          background: #fff;
-          border-bottom: 1px solid #ddd;
-          padding: 1rem;
-          font-family: system-ui;
-        ">
+            <div style="position: fixed; inset: 0; z-index: 9999; background: #fff; border-bottom: 1px solid #ddd; padding: 1rem; font-family: system-ui;">
                 <strong>JavaScript is disabled.</strong>
                 The site still works; animated navigation and form enhancements are unavailable.
             </div>
         </noscript>
-        <!-- App JS (single, compact) -->
+        <!-- App JS -->
         <script src="script.js" defer></script>
     </body>
 </html>

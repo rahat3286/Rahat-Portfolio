@@ -75,12 +75,13 @@
     --accent: #03cc65;
     --p: 0%;
 
-    --skel-surface: var(--surface-100);
-    --skel-card: #f5faf7;
-    --skel-shimmer: #edf6f1;
-    --skel-stripe: rgba(255, 255, 255, .85);
-    --skel-tint-1: rgba(47, 125, 90, .10);
-    --skel-tint-2: rgba(59, 143, 115, .08);
+    /* Skeleton palette (neutral w/ brand tint) */
+    --skel-surface: #ffffff;
+    --skel-card: #f6f8f7;
+    --skel-shimmer: #eef5f1;
+    --skel-stripe: rgba(255, 255, 255, 0.9);
+    --skel-tint-1: rgba(47, 125, 90, .08);
+    --skel-tint-2: rgba(59, 143, 115, .07);
 }
 
 /* =========================
@@ -111,7 +112,6 @@ img, svg, video, canvas {
     display: block;
 }
 
-/* NOTE: will left-align on small screens below */
 .section-body p, .card p, .text-secondary, .text-body-secondary {
     line-height: 1.6;
     text-wrap: pretty;
@@ -120,12 +120,10 @@ img, svg, video, canvas {
     hyphens: auto;
 }
 
-/* Mobile readability: avoid rivers from forced justification */
 @media (max-width: 575.98px) {
     .section-body p, .card p, .text-secondary, .text-body-secondary {
         text-align: left;
         text-justify: auto;
-        hyphens: auto;
     }
 }
 
@@ -162,7 +160,8 @@ img, svg, video, canvas {
     outline-offset: 3px;
 }
 
-/* Hide main UI when skeleton active (prevents bleed-through) */
+/* Hide main UI when skeleton active (prevents bleed-through)
+   FIX: keep top progress bar visible */
 body[aria-busy="true"] {
     overflow: hidden;
 }
@@ -171,7 +170,7 @@ body[aria-busy="true"] #main-content,
 body[aria-busy="true"] #sidebar,
 body[aria-busy="true"] #topNavbar,
 body[aria-busy="true"] #rightSlider,
-body[aria-busy="true"]> :not(#page-skeleton) {
+body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     visibility: hidden !important;
 }
 
@@ -226,7 +225,8 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     transform: translateZ(0);
 }
 
-.partial-border-box::before, .partial-border-box::after {
+.partial-border-box::before,
+.partial-border-box::after {
     content: "";
     position: absolute;
     width: var(--corner-width);
@@ -262,25 +262,22 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     border-color: var(--corner-color-brand);
 }
 
-/* NEW: apply hero corner color */
 .partial-border--hero::before, .partial-border--hero::after {
     border-color: var(--corner-color-hero);
 }
 
-/* -------- FIXED: safer animated-text gating so it persists after reveal -------- */
+/* text entrance */
 .animated-text {
     transform-origin: 50% 60%;
     will-change: transform, opacity;
     color: #308264;
 }
 
-/* hidden briefly only until UI gets ready */
 .js:not(.ui-ready) .animated-text {
     transform: translateY(14px) scale(.94);
     opacity: 0;
 }
 
-/* plays once, end state sticks */
 .ui-ready .animated-text {
     animation: text-appear .82s var(--ease-standard) .06s both;
 }
@@ -311,10 +308,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
-    .animated-text,
-    .js:not(.ui-ready) .animated-text,
-    .ui-ready .animated-text {
+    .animated-text, .js:not(.ui-ready) .animated-text, .ui-ready .animated-text {
         animation: none !important;
         transform: none !important;
         opacity: 1 !important;
@@ -480,10 +474,6 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
 }
 
-.eyebrow-badge i {
-    font-size: .95rem;
-}
-
 /* Desktop slide-mode */
 @media (min-width: 992px) {
     .js #main-content {
@@ -632,7 +622,6 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     will-change: transform, opacity;
 }
 
-/* NEW: wire the JS-driven .animate class to a real transition using --ri-duration */
 #reload-indicator .fill.animate {
     transition: transform var(--ri-duration, 900ms) var(--ease-standard);
 }
@@ -660,7 +649,6 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     position: fixed;
     inset: 0;
     z-index: 3000;
-    /* OPAQUE, light background to prevent page bleed-through */
     background: linear-gradient(180deg, var(--spruce-050) 0%, var(--skel-surface) 100%);
     opacity: 0;
     visibility: hidden;
@@ -668,7 +656,6 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     pointer-events: none;
 }
 
-/* Soft, on-brand glow (removed the dark linear gradient) */
 #page-skeleton::before {
     content: "";
     position: absolute;
@@ -685,7 +672,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     pointer-events: all;
 }
 
-/* Central “loading portfolio…” chip */
+/* Center accessibility chip (no spinner) */
 #page-skeleton .skel-center {
     position: absolute;
     top: clamp(20px, 10vh, 120px);
@@ -703,22 +690,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     box-shadow: 0 14px 40px rgba(15, 77, 49, .12);
 }
 
-#page-skeleton .skel-spinner {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 3px solid rgba(47, 125, 90, .18);
-    border-top-color: #2f7d5a;
-    animation: spin .9s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg)
-    }
-}
-
-/* Topbar + side placeholders (unchanged layout, lighter colors) */
+/* Fixed top/side placeholders */
 #page-skeleton .skel-topbar {
     position: absolute;
     top: 0;
@@ -746,69 +718,150 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     }
 }
 
-/* Content columns */
-#page-skeleton .skel-content {
+/* Main skeleton layout */
+#page-skeleton .skel-main {
     position: absolute;
     top: var(--mob-nav-h);
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 2rem;
+    padding: 1.5rem;
     display: grid;
-    gap: 1rem;
-    grid-template-rows: repeat(6, minmax(16px, 1fr));
+    gap: 1.5rem;
+    overflow: hidden;
     background: transparent;
 }
 
 @media (min-width:992px) {
-    #page-skeleton .skel-content {
+    #page-skeleton .skel-main {
         left: clamp(200px, 20%, 280px);
     }
 }
 
-/* Shimmer bars: lighter, green-tinted */
-.skel-shimmer {
+/* Hero skeleton */
+.skel-hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    align-items: center;
+}
+
+@media (min-width: 992px) {
+    .skel-hero {
+        grid-template-columns: 1.1fr .9fr;
+    }
+}
+
+.skel-hero-text {
+    display: grid;
+    gap: .6rem;
+    align-content: start;
+}
+
+.skel-line {
+    height: 14px;
+    border-radius: 10px;
     background: var(--skel-shimmer);
     position: relative;
     overflow: hidden;
+}
+
+.skel-line.lg {
+    height: 28px;
+    width: min(520px, 90%);
+}
+
+.skel-line.md {
+    height: 18px;
+    width: min(420px, 85%);
+}
+
+.skel-line.sm {
+    height: 16px;
+    width: min(380px, 80%);
+}
+
+.skel-cta {
+    width: 180px;
+    height: 40px;
     border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+}
+
+.skel-icons {
+    display: flex;
+    gap: .5rem;
+    margin-top: .2rem;
+}
+
+.skel-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--skel-shimmer);
+    position: relative;
+    overflow: hidden;
+}
+
+.skel-hero-figure {
+    min-height: 220px;
+    height: clamp(220px, 34vw, 360px);
+    border-radius: 18px;
+    background: var(--skel-card);
+    border: 1px solid var(--spruce-200);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 26px rgba(16, 90, 62, .08), 0 12px 36px rgba(0, 0, 0, .06);
+}
+
+/* Card grid under hero */
+.skel-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width:576px) {
+    .skel-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width:992px) {
+    .skel-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.skel-card {
+    height: clamp(140px, 20vw, 180px);
+    border-radius: 16px;
+    background: var(--skel-card);
+    border: 1px solid var(--spruce-200);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 18px rgba(15, 77, 49, .08), 0 2px 6px rgba(15, 77, 49, .06);
+}
+
+/* Shimmer effect (shared) */
+.skel-shimmer {
+    position: relative;
 }
 
 .skel-shimmer::after {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: linear-gradient(90deg,
-            rgba(255, 255, 255, 0) 0%,
-            var(--skel-stripe) 45%,
-            rgba(255, 255, 255, 0) 100%);
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, var(--skel-stripe) 45%, rgba(255, 255, 255, 0) 100%);
     transform: translateX(-100%);
     animation: shimmer .9s linear infinite;
+    mix-blend-mode: screen;
 }
 
 @keyframes shimmer {
     to {
-        transform: translateX(100%)
+        transform: translateX(100%);
     }
 }
-
-#page-skeleton .skel-content .skel-shimmer {
-    min-height: 22px;
-}
-
-#page-skeleton .skel-content .skel-shimmer:first-child {
-    min-height: 36px;
-}
-
-/* Make sure the skeleton feels airy */
-#page-skeleton .skel-center,
-#page-skeleton .skel-sidebar,
-#page-skeleton .skel-topbar {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-}
-
 
 /* =========================
    Right slider (mobile)
@@ -1053,15 +1106,15 @@ body[aria-busy="true"]> :not(#page-skeleton) {
 
 @keyframes pulseDot {
     0% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, .55);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, .55)
     }
 
     70% {
-        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0)
     }
 
     100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0)
     }
 }
 
@@ -1127,7 +1180,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     white-space: nowrap;
 }
 
-@media (min-width: 992px) {
+@media (min-width:992px) {
     .hero-typewrap {
         justify-content: flex-start;
     }
@@ -1150,7 +1203,6 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     }
 }
 
-/* Respect reduced-motion for the caret explicitly (in addition to global rule) */
 @media (prefers-reduced-motion: reduce) {
     .type-caret {
         animation: none !important;
@@ -1337,8 +1389,9 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     content: "";
     position: absolute;
     left: -1rem;
-    top: 4%;
-    transform: translateY(50%);
+    top: 0.9em;
+    /* FIX: consistent vertical alignment */
+    transform: translateY(-50%);
     width: 10px;
     height: 10px;
     background: var(--brand-ink);
@@ -1556,7 +1609,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     text-align: center;
 }
 
-@media (min-width: 992px) {
+@media (min-width:992px) {
     .cv-info-btn, .cv-reveal {
         display: none;
     }
@@ -1615,7 +1668,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     grid-template-columns: 1fr;
 }
 
-@media (min-width: 992px) {
+@media (min-width:992px) {
     .impact-grid {
         grid-template-columns: repeat(3, 1fr);
         align-items: stretch;
@@ -1709,16 +1762,14 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     border-width: 1px;
 }
 
-/* FIX: remove hard height; use max-height so JS can clamp/animate safely */
+/* Expander */
 .rc-expander {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    /* was: height: 80%; */
     height: auto;
     max-height: min(80vh, 720px);
-    /* JS may override inline via setExpanderMaxHeight */
     transform: translate3d(0, 100%, 0);
     background: linear-gradient(180deg, var(--expander-bg-1) 0%, var(--expander-bg-2) 55%, #ffffff 100%);
     border-top: 1px solid rgba(0, 0, 0, .08);
@@ -1744,7 +1795,9 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: radial-gradient(800px 240px at 30% -10%, rgba(47, 125, 90, .08), transparent 60%), radial-gradient(1000px 320px at 100% 110%, rgba(227, 205, 176, .18), transparent 62%);
+    background:
+        radial-gradient(800px 240px at 30% -10%, rgba(47, 125, 90, .08), transparent 60%),
+        radial-gradient(1000px 320px at 100% 110%, rgba(227, 205, 176, .18), transparent 62%);
 }
 
 .rc-expander .rc-close {
@@ -1826,7 +1879,7 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     padding: 1.2rem;
 }
 
-@media (min-width: 576px) {
+@media (min-width:576px) {
     .skills-card .card-body {
         padding: 1.25rem 1.25rem 1.3rem;
     }
@@ -1890,7 +1943,8 @@ body[aria-busy="true"]> :not(#page-skeleton) {
 }
 
 .skills-card .progress {
-    --track: #eadfc9;
+    --track: #dfe9e4;
+    /* FIX: brand-tinted track for better palette fit */
     background: var(--track);
     height: .62rem;
     border-radius: 8px;
@@ -2032,11 +2086,12 @@ body[aria-busy="true"]> :not(#page-skeleton) {
 
 .ci-label {
     font-size: .9rem;
-    color: #6b7280;
+    color: #5f6775;
     line-height: 1;
     white-space: nowrap;
 }
 
+/* slightly darker for contrast */
 .ci-value {
     font-weight: 700;
     color: #134e3a;
@@ -2296,13 +2351,35 @@ body[aria-busy="true"]> :not(#page-skeleton) {
 }
 
 /* =========================
-   Reduced motion (global)
+   Reduced motion (scoped)
 ========================= */
 @media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: .01ms !important;
+
+    /* Stop purely decorative animations */
+    .skel-shimmer::after,
+    .availability-badge .dot,
+    .type-caret,
+    .animated-text,
+    #reload-indicator.waiting .fill,
+    .rc-expander[aria-hidden="false"],
+    .rc-expander[aria-hidden="true"],
+    .toast-msg,
+    .toast-msg.hide {
+        animation: none !important;
+    }
+
+    /* Remove large transitions; keep focus/hover usability intact */
+    .research-card,
+    .skills-card,
+    .back-to-top,
+    .hamburger span,
+    .hero-cta .btn,
+    .hc-item,
+    #rightSlider {
+        transition: none !important;
+    }
+
+    html {
         scroll-behavior: auto !important;
     }
 }
@@ -2336,4 +2413,48 @@ body[aria-busy="true"]> :not(#page-skeleton) {
     opacity: 1 !important;
     transform: none !important;
     animation: none !important;
+}
+
+/* =========================
+   CQI fallbacks (compat)
+========================= */
+@supports not (width: 1cqi) {
+    .cv-title {
+        font-size: clamp(1.05rem, 2.8vw, 1.25rem);
+    }
+
+    .icon-badge {
+        font-size: clamp(.9rem, 3.2vw, 1.1rem);
+        width: clamp(32px, 6vw, 42px);
+        height: clamp(32px, 6vw, 42px);
+    }
+
+    .contact-card .card-title {
+        font-size: clamp(1rem, 5.2vw, 1.4rem);
+    }
+
+    .contact-card .form-label {
+        font-size: clamp(.88rem, 3.3vw, 1rem);
+    }
+
+    .contact-card .form-control {
+        padding-block: clamp(.52rem, 2.6vw, .8rem);
+        font-size: clamp(.9rem, 3.6vw, 1.05rem);
+    }
+
+    .contact-card .form-control::placeholder {
+        font-size: clamp(.78rem, 3vw, .98rem);
+    }
+
+    #contact .btn {
+        font-size: clamp(.92rem, 3.6vw, 1.05rem);
+    }
+
+    #contact .btn i {
+        font-size: clamp(1rem, 3.2vw, 1.15rem);
+    }
+
+    .needs-validation .invalid-feedback {
+        font-size: clamp(.78rem, 2.8vw, .9rem);
+    }
 }

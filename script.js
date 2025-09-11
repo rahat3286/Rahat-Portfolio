@@ -1,15 +1,16 @@
 "use strict";
 
 /* ============================================================================
-   Rahat Portfolio — App JS (refined)
+   Rahat Portfolio — App JS (refined & patched)
    - Desktop slide-mode with per-section scroll memory
    - Mobile smooth-scroll + active nav sync
-   - Right drawer with focus trapping (a11y)
+   - Right drawer with focus trapping + inert polyfill (a11y)
    - Research card expanders (max-height, safer toggles)
    - Skills progress animation on view (one-shot; respects R.M.)
-   - Contact form with EmailJS + mailto fallback
+   - Contact form with EmailJS + mailto fallback with clear feedback
    - Toast system, typewriter (a11y), hero image fallback
    - Skeleton/progress bar wiring and UI-ready safety
+   - Misc fixes: skip-link safeguard, robust showSection, CQI fallbacks, etc.
 ============================================================================ */
 
 /* ========= CONFIG / UTILS ========= */
@@ -22,20 +23,6 @@ const $ = (s, sc = document) => sc.querySelector(s);
 const $$ = (s, sc = document) => Array.from(sc.querySelectorAll(s));
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-const getTargetFrom = (el) => {
-    if (!el) return "";
-    const ds = el.dataset?.target || (el.getAttribute ? el.getAttribute("data-scroll-to") : "");
-    if (ds) return ds;
-    const href = el.getAttribute ? el.getAttribute("href") : "";
-    if (href && href.startsWith("#")) return href.slice(1);
-    try {
-        const u = new URL(href || "", location.href);
-        return u.hash ? u.hash.slice(1) : "";
-    } catch {
-        return "";
-    }
-};
-
 const FOCUSABLE = `
 a[href]:not([tabindex="-1"]):not([inert]),
 area[href]:not([tabindex="-1"]):not([inert]),
@@ -45,6 +32,24 @@ select:not([disabled]):not([tabindex="-1"]):not([inert]),
 textarea:not([disabled]):not([tabindex="-1"]):not([inert]),
 [tabindex]:not([tabindex="-1"]):not([inert])
 `.trim();
+
+/** Get the destination target id from various clickable elements. */
+function getTargetFrom(el) {
+    if (!el) return "";
+    const ds =
+        el.dataset?.target ||
+        (el.getAttribute ? el.getAttribute("data-scroll-to") : "");
+    if (ds) return ds;
+    const href = el.getAttribute ? el.getAttribute("href") : "";
+    if (!href) return "";
+    if (href.startsWith("#")) return href.slice(1);
+    try {
+        const u = new URL(href, location.href);
+        return u.hash ? u.hash.slice(1) : "";
+    } catch {
+        return "";
+    }
+}
 
 /* ========= DOM HOOKS ========= */
 const sidebar = $("#sidebar");
@@ -66,7 +71,7 @@ const backToTopBtn = $("#backToTop");
 
 /* ========= STATE ========= */
 const MENU_STORAGE_KEY = "rightSliderOpen";
-const SCROLL_KEY = "scrollStateV6";
+const SCROLL_KEY = "scrollStateV7";
 
 let currentId = null;
 let visualsReady = false;
@@ -78,8 +83,45 @@ let ioSections = null; // mobile section observer
 let saveScrollRAF = 0;
 const sectionScroll = new Map();
 
+/* ========= INERT POLYFILL (for browsers w/o native inert) ========= */
+const inertSupported = "inert" in HTMLElement.prototype;
+/** Disable/restore focus + interaction within a subtree. */
+function setInert(el, makeInert) {
+    if (!el) return;
+    if (inertSupported) {
+        if (makeInert) el.setAttribute("inert", "");
+        else el.removeAttribute("inert");
+        return;
+    }
+    // Fallback: block pointer events (CSS) + remove focusability
+    if (makeInert) {
+        el.setAttribute("inert", "");
+        const focusables = $$(FOCUSABLE, el);
+        focusables.forEach((f) => {
+            if (!f.hasAttribute("data-prev-tabindex")) {
+                if (f.hasAttribute("tabindex")) {
+                    f.setAttribute("data-prev-tabindex", f.getAttribute("tabindex"));
+                } else {
+                    f.setAttribute("data-prev-tabindex", "none");
+                }
+            }
+            f.setAttribute("tabindex", "-1");
+        });
+    } else {
+        const focusables = $$(FOCUSABLE, el);
+        focusables.forEach((f) => {
+            const prev = f.getAttribute("data-prev-tabindex");
+            if (prev !== null) {
+                if (prev === "none") f.removeAttribute("tabindex");
+                else f.setAttribute("tabindex", prev);
+                f.removeAttribute("data-prev-tabindex");
+            }
+        });
+        el.removeAttribute("inert");
+    }
+}
+
 /* ========= PROGRESS BAR / SKELETON ========= */
-/** Attach CSS-driven transition to the fill using the .animate class (see style.css) */
 function setIndicatorProgress(p) {
     indicatorEl?.style.setProperty("--progress", String(p));
 }
@@ -88,7 +130,10 @@ function playTo(target, ms = 900) {
     indicatorEl.classList.add("visible");
     const fill = indicatorEl.querySelector(".fill");
     fill?.classList.remove("animate");
-    indicatorEl.style.setProperty("--ri-duration", prefersReducedMotion() ? "1ms" : `${ms}ms`);
+    indicatorEl.style.setProperty(
+        "--ri-duration",
+        prefersReducedMotion() ? "1ms" : `${ms}ms`
+    );
     requestAnimationFrame(() => {
         fill?.classList.add("animate");
         setIndicatorProgress(target);
@@ -130,7 +175,7 @@ function hideSkeleton() {
     completeIndicator();
     setTimeout(() => {
         skeletonEl.hidden = true;
-        markUiReady(); // ensures animated brand/hero end state sticks
+        markUiReady(); // ensure animated brand/hero end state sticks
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
         maybeStartTypewriter();
@@ -158,33 +203,59 @@ function saveActiveSectionScroll() {
 }
 function restoreSectionScroll(target) {
     if (!isDesktop() || !target) return;
-    target.scrollTop = sectionScroll.get(target.id) || 0;
+    target.scrollTop = sectionScroll.get(target.id) ?? 0;
 }
 
 function applyDynamicHeadingClearance() {
     sections.forEach((section) => {
         const heading = $(".section-heading", section);
-        const h = (heading && (heading.getBoundingClientRect().height || heading.offsetHeight)) || 0;
+        const rect = heading?.getBoundingClientRect?.();
+        const h = rect?.height || heading?.offsetHeight || 0;
         section.style.setProperty("--dynamic-clear", `${Math.ceil(h + 24)}px`);
     });
 }
 
 function syncActiveUI(targetId) {
+    // Ignore if unknown id
+    if (!document.getElementById(targetId)) return;
     sidebarLinks.forEach((a) => {
         const active = getTargetFrom(a) === targetId;
         a.dataset.active = active ? "true" : "false";
-        active ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
+        active
+            ? a.setAttribute("aria-current", "page")
+            : a.removeAttribute("aria-current");
     });
     sliderItems.forEach((btn) => {
         const active = getTargetFrom(btn) === targetId;
         btn.dataset.active = active ? "true" : "false";
-        active ? btn.setAttribute("aria-current", "page") : btn.removeAttribute("aria-current");
+        active
+            ? btn.setAttribute("aria-current", "page")
+            : btn.removeAttribute("aria-current");
     });
 }
 
+/** Safe section router; works for both desktop slide-mode and mobile document flow. */
 function showSection(targetId, pushHash = true, { preserveScroll = false } = {}) {
     const target = document.getElementById(targetId);
     if (!target) return;
+
+    // If already active/visible, just ensure focus + sync + optional scroll restore
+    if (currentId === targetId) {
+        if (isDesktop()) {
+            if (!preserveScroll) restoreSectionScroll(target);
+            focusSection(target);
+            applyDynamicHeadingClearance();
+        } else if (!preserveScroll) {
+            target.scrollIntoView({
+                behavior: prefersReducedMotion() ? "auto" : "smooth",
+                block: "start",
+            });
+            requestAnimationFrame(() => focusSection(target));
+        }
+        syncActiveUI(targetId);
+        if (pushHash) history.replaceState(null, "", `#${targetId}`);
+        return;
+    }
 
     const lockMs = prefersReducedMotion() ? 0 : isDesktop() ? 500 : 800;
     withNavLock(lockMs);
@@ -221,22 +292,24 @@ function setupIntersectionObserver() {
         ioSections = new IntersectionObserver(
             (entries) => {
                 if (navLock) return;
+                // Get entries entering viewport
                 const visible = entries.filter((e) => e.isIntersecting);
                 if (!visible.length) return;
-                // Prefer the first visible from top, break ties by bigger ratio
+
+                // Choose section nearest to top; break ties by larger ratio
                 visible.sort((a, b) => {
-                    const da = a.boundingClientRect.top;
-                    const db = b.boundingClientRect.top;
-                    return Math.abs(da - db) > 8 ? da - db : b.intersectionRatio - a.intersectionRatio;
+                    const ta = a.boundingClientRect.top;
+                    const tb = b.boundingClientRect.top;
+                    if (Math.abs(ta - tb) > 8) return ta - tb;
+                    return b.intersectionRatio - a.intersectionRatio;
                 });
                 const id = visible[0].target.id;
-                if (id && id !== currentId) {
-                    currentId = id;
-                    syncActiveUI(id);
-                    history.replaceState(null, "", `#${id}`);
-                    saveScrollState();
-                    if (id === "skills") maybeTriggerSkillsProgress();
-                }
+                if (!id || id === currentId) return;
+                currentId = id;
+                syncActiveUI(id);
+                history.replaceState(null, "", `#${id}`);
+                saveScrollState();
+                if (id === "skills") maybeTriggerSkillsProgress();
             },
             { root: null, rootMargin: "0px 0px -40% 0px", threshold: [0.2, 0.5, 0.75] }
         );
@@ -324,13 +397,14 @@ function setMenuOpen(open, { animate = true, focus = true, persist = true } = {}
 
     rightSlider.dataset.open = open ? "true" : "false";
     rightSlider.setAttribute("aria-hidden", open ? "false" : "true");
-    open ? rightSlider.removeAttribute("inert") : rightSlider.setAttribute("inert", "");
+
+    setInert(rightSlider, !open);
+    setInert(mainContent, open);
 
     hamburger.dataset.active = open ? "true" : "false";
     hamburger.setAttribute("aria-expanded", open ? "true" : "false");
 
     mainContent.classList.toggle("blur", open);
-    open ? mainContent.setAttribute("inert", "") : mainContent.removeAttribute("inert");
 
     if (open) {
         releaseFocusTrap = trapFocus(rightSlider);
@@ -355,7 +429,7 @@ function showToast({ type = "success", title = "", message = "" } = {}) {
     toast.setAttribute("aria-live", "polite");
     toast.innerHTML = `
     <div class="icon">${type === "success" ? "✅" : type === "danger" ? "❗" : type === "warning" ? "⚠️" : "ℹ️"}</div>
-    <div class="content"><strong>${title || (type === "success" ? "Success" : "Notice")}</strong> ${message}</div>
+    <div class="content"><strong>${title || (type === "success" ? "Success" : "Notice")}:</strong> ${message}</div>
     <button class="close" type="button" aria-label="Close">&times;</button>
   `.trim();
     const remove = () => {
@@ -379,12 +453,12 @@ function setExpanderVisibility(expander, open) {
     if (open) {
         expander.hidden = false;
         expander.setAttribute("aria-hidden", "false");
-        expander.removeAttribute("inert");
+        setInert(expander, false);
         void expander.offsetWidth; // force style recalc to kick animation
         return;
     }
     expander.setAttribute("aria-hidden", "true");
-    expander.setAttribute("inert", "");
+    setInert(expander, true);
     const done = () => {
         expander.hidden = true;
         expander.removeEventListener("animationend", done);
@@ -405,8 +479,11 @@ function closeAnyOpenResearch(exceptArticle = null) {
 function setExpanderMaxHeight(article) {
     const expander = $(".rc-expander", article);
     if (!expander) return;
-    // Clamp to viewport, avoid overflows, CSS has a sensible default too
-    const maxH = Math.max(240, Math.floor(Math.min(window.innerHeight * 0.8, article.clientHeight * 0.8)));
+    // Clamp to viewport and card size; avoid overflows.
+    const maxH = Math.max(
+        240,
+        Math.floor(Math.min(window.innerHeight * 0.8, article.clientHeight * 0.9))
+    );
     expander.style.maxHeight = `${maxH}px`;
 }
 function adjustOpenResearchExpander() {
@@ -605,9 +682,12 @@ const EMAILJS_CFG = {
     SERVICE_ID: "service_w4wxv6x",
     TEMPLATE_ID: "template_i56317p",
 };
+
 function initEmailJS() {
     try {
-        if (window.emailjs) emailjs.init({ publicKey: EMAILJS_CFG.PUBLIC_KEY });
+        if (window.emailjs?.init) {
+            emailjs.init({ publicKey: EMAILJS_CFG.PUBLIC_KEY });
+        }
     } catch {
         /* ignore */
     }
@@ -699,6 +779,7 @@ function setupContactForm() {
         const to = form.dataset.mailto?.trim() || "rahat3286@gmail.com";
         const subject = encodeURIComponent(`Portfolio message from ${payload.name}`);
         const body = encodeURIComponent(`${payload.message}\n\n— ${payload.name} <${payload.email}>`);
+        // Opening mailto works best on user gesture; this runs in submit handler.
         location.href = `mailto:${to}?subject=${subject}&body=${body}`;
         return { ok: true, fallback: "mailto" };
     };
@@ -757,8 +838,10 @@ function setupContactForm() {
         if (result.ok) {
             showToast({
                 type: "success",
-                title: "Sent!",
-                message: "Your message was sent successfully. I’ll get back to you soon.",
+                title: "Sent",
+                message: result.fallback === "mailto"
+                    ? "Opening your mail client… If it doesn't open, please email me directly."
+                    : "Your message was sent successfully. I’ll get back to you soon.",
             });
             form.reset();
             form.classList.remove("was-validated");
@@ -767,7 +850,7 @@ function setupContactForm() {
             showToast({
                 type: "danger",
                 title: "Couldn’t send",
-                message: "Please try again in a moment or email me directly.",
+                message: "Please try again in a moment or email me directly at rahat3286@gmail.com.",
             });
         }
     });
@@ -918,7 +1001,8 @@ function measureFit(scopeEl) {
     const inner = wrapForFit(scopeEl);
     if (!inner) return;
     inner.style.setProperty("--fit", "1");
-    const available = Math.max(1, scopeEl.clientWidth || scopeEl.getBoundingClientRect().width || 1);
+    const available =
+        Math.max(1, scopeEl.clientWidth || scopeEl.getBoundingClientRect().width || 1);
     const natural = Math.max(inner.scrollWidth, inner.getBoundingClientRect().width || 1);
     const scale = natural <= 1 ? 1 : clamp(available / natural, 0.6, 1.05);
     inner.style.setProperty("--fit", String(scale));
@@ -966,7 +1050,7 @@ function saveScrollState() {
             mode: isDesktop() ? "desktop" : "mobile",
             id: currentId || sections[0]?.id || "home",
             scrollTop: 0,
-            version: 6,
+            version: 7,
         };
         if (isDesktop()) {
             const active = getActiveSectionEl();
@@ -990,7 +1074,8 @@ function saveScrollState() {
 function restoreSavedScrollIfAny() {
     const saved = readSavedScroll();
     if (!saved) return;
-    const targetId = (saved.id && document.getElementById(saved.id)) ? saved.id : currentId || sections[0]?.id;
+    const targetId =
+        (saved.id && document.getElementById(saved.id)) ? saved.id : (currentId || sections[0]?.id);
     showSection(targetId, true, { preserveScroll: true });
     if (isDesktop()) {
         const active = getActiveSectionEl();
@@ -1043,6 +1128,7 @@ function restoreSavedScrollIfAny() {
 })();
 
 /* ========= EVENTS (NAV + MENU + HASH) ========= */
+// Desktop sidebar nav
 sidebar?.addEventListener(
     "click",
     (e) => {
@@ -1056,6 +1142,7 @@ sidebar?.addEventListener(
     { passive: false }
 );
 
+// Mobile slider nav
 sliderItemsWrap?.addEventListener(
     "click",
     (e) => {
@@ -1070,6 +1157,7 @@ sliderItemsWrap?.addEventListener(
     { passive: false }
 );
 
+// Keyboard activation on slider items
 sliderItems.forEach((item) => {
     item.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -1083,12 +1171,14 @@ sliderItems.forEach((item) => {
     });
 });
 
+// Hamburger toggle
 hamburger?.addEventListener("click", (e) => {
     e.stopPropagation();
     lastFocusBeforeMenu = document.activeElement;
     setMenuOpen(!(rightSlider?.dataset.open === "true"));
 });
 
+// Click outside to close mobile menu
 document.addEventListener(
     "click",
     (e) => {
@@ -1103,32 +1193,41 @@ document.addEventListener(
     { passive: true }
 );
 
+// Escape to close mobile menu
 document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && rightSlider?.dataset.open === "true") setMenuOpen(false);
 });
 
+// Skip-link safeguard: allow default when target is #main-content; intercept only if it points to a section in slide-mode
 if (skipLink) {
     skipLink.addEventListener("click", (e) => {
-        const id = skipLink.getAttribute("href")?.slice(1);
-        if (!id) return;
-        if (isDesktop()) {
+        const rawHref = skipLink.getAttribute("href") || "";
+        const id = rawHref.startsWith("#") ? rawHref.slice(1) : "";
+        if (!id) return; // default
+        if (id === "main-content") {
+            // native skip to main — let browser handle, then focus main
+            requestAnimationFrame(() => mainContent?.focus?.({ preventScroll: true }));
+            return;
+        }
+        // If it points to a section and we're in desktop slide-mode, handle via router
+        if (isDesktop() && document.getElementById(id)?.classList.contains("section")) {
             e.preventDefault();
             showSection(id, true);
-        } else {
-            requestAnimationFrame(() => document.getElementById(id)?.focus({ preventScroll: true }));
         }
     });
 }
 
+// Hash navigation
 window.addEventListener("hashchange", () => {
     const id = location.hash?.slice(1);
     if (id && document.getElementById(id)) showSection(id, false);
 });
 
+// Any element with [data-scroll-to]
 document.addEventListener(
     "click",
     (e) => {
-        const go = e.target.closest("[data-scroll-to]");
+        const go = e.target.closest?.("[data-scroll-to]");
         if (!go) return;
         const id = go.getAttribute("data-scroll-to");
         if (!id) return;
@@ -1212,7 +1311,10 @@ window.addEventListener("load", () => {
     if (!skeletonVisible) {
         indicatorEl?.classList.remove("waiting");
         playTo(1, 600);
-        setTimeout(() => indicatorEl?.classList.remove("visible"), prefersReducedMotion() ? 0 : 600);
+        setTimeout(
+            () => indicatorEl?.classList.remove("visible"),
+            prefersReducedMotion() ? 0 : 600
+        );
         markUiReady(); // guarantees animations end-state sticks
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
