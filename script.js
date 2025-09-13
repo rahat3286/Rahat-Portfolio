@@ -1,7 +1,7 @@
 "use strict";
 
 /* ============================================================================
-   Rahat Portfolio — App JS (refined & patched)
+   Rahat Portfolio — App JS (refined, with hardened skeleton lifecycle)
    - Desktop slide-mode with per-section scroll memory
    - Mobile smooth-scroll + active nav sync
    - Right drawer with focus trapping + inert polyfill (a11y)
@@ -9,7 +9,7 @@
    - Skills progress animation on view (one-shot; respects R.M.)
    - Contact form with EmailJS + mailto fallback with clear feedback
    - Toast system, typewriter (a11y), hero image fallback
-   - Skeleton/progress bar wiring and UI-ready safety
+   - Skeleton/progress bar: NO bleed-through; UI only revealed after fade-out
    - Misc fixes: skip-link safeguard, robust showSection, CQI fallbacks, etc.
 ============================================================================ */
 
@@ -30,6 +30,7 @@ button:not([disabled]):not([tabindex="-1"]):not([inert]),
 input:not([disabled]):not([type="hidden"]):not([tabindex="-1"]):not([inert]),
 select:not([disabled]):not([tabindex="-1"]):not([inert]),
 textarea:not([disabled]):not([tabindex="-1"]):not([inert]),
+[contenteditable="true"]:not([tabindex="-1"]):not([inert]),
 [tabindex]:not([tabindex="-1"]):not([inert])
 `.trim();
 
@@ -106,6 +107,7 @@ function setInert(el, makeInert) {
                 }
             }
             f.setAttribute("tabindex", "-1");
+            f.setAttribute("aria-hidden", "true");
         });
     } else {
         const focusables = $$(FOCUSABLE, el);
@@ -115,6 +117,9 @@ function setInert(el, makeInert) {
                 if (prev === "none") f.removeAttribute("tabindex");
                 else f.setAttribute("tabindex", prev);
                 f.removeAttribute("data-prev-tabindex");
+            }
+            if (f.getAttribute("aria-hidden") === "true") {
+                f.removeAttribute("aria-hidden");
             }
         });
         el.removeAttribute("inert");
@@ -155,33 +160,63 @@ function completeIndicator() {
 let skeletonTimer = 0;
 let skeletonVisible = false;
 
+/** Show the skeleton overlay and make the rest of the UI non-visible. */
 function showSkeleton() {
-    if (!skeletonEl) return;
+    if (!skeletonEl || skeletonVisible) return;
     skeletonEl.hidden = false;
     skeletonEl.dataset.visible = "true";
     document.body.setAttribute("aria-busy", "true"); // CSS hides UI to prevent bleed-through
     skeletonVisible = true;
     startIndicatorHold();
 }
-function markUiReady() {
-    document.documentElement.classList.add("ui-ready");
-    visualsReady = true;
-}
+
+/**
+ * Hide the skeleton overlay.
+ * Guarantee: main UI is made visible ONLY AFTER the fade-out completes.
+ */
 function hideSkeleton() {
-    if (!skeletonEl) return;
+    if (!skeletonEl || !skeletonVisible) return;
     skeletonEl.dataset.visible = "false";
-    document.body.removeAttribute("aria-busy");
     skeletonVisible = false;
+
+    // Finish the top indicator while we fade out
     completeIndicator();
-    setTimeout(() => {
+
+    const after = () => {
+        // Unblock UI *after* skeleton finished its transition
         skeletonEl.hidden = true;
-        markUiReady(); // ensure animated brand/hero end state sticks
+        document.body.removeAttribute("aria-busy");
+
+        // Mark UI ready (enables entry animations) and kick post-load hooks
+        markUiReady();
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
         maybeStartTypewriter();
         initSkillsOnce();
         maybeTriggerSkillsProgress();
-    }, prefersReducedMotion() ? 0 : 120);
+
+        // cleanup listener
+        skeletonEl.removeEventListener("transitionend", onEnd);
+        clearTimeout(fallbackTO);
+    };
+
+    const onEnd = (e) => {
+        if (e.target !== skeletonEl) return; // ensure we respond to the overlay's transition
+        after();
+    };
+
+    // Prefer transitionend; also schedule a small fallback timer
+    if (!prefersReducedMotion()) {
+        skeletonEl.addEventListener("transitionend", onEnd, { once: true });
+        var fallbackTO = setTimeout(after, 400); // safety net
+    } else {
+        after();
+    }
+}
+
+function markUiReady() {
+    document.documentElement.classList.add("ui-ready");
+    visualsReady = true;
 }
 
 /* ========= NAV / SECTIONS ========= */
@@ -262,7 +297,9 @@ function showSection(targetId, pushHash = true, { preserveScroll = false } = {})
 
     if (isDesktop()) {
         saveActiveSectionScroll();
-        sections.forEach((sec) => (sec.dataset.active = sec === target ? "true" : "false"));
+        sections.forEach(
+            (sec) => (sec.dataset.active = sec === target ? "true" : "false")
+        );
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
         requestAnimationFrame(() => {
             if (!preserveScroll) restoreSectionScroll(target);
@@ -337,7 +374,9 @@ function setupIntersectionObserver() {
 
 function initMode({ initialId = null, preserveScroll = false } = {}) {
     const startId =
-        (location.hash && document.getElementById(location.hash.slice(1)) && location.hash.slice(1)) ||
+        (location.hash &&
+            document.getElementById(location.hash.slice(1)) &&
+            location.hash.slice(1)) ||
         initialId ||
         sections[0]?.id ||
         "home";
@@ -373,7 +412,10 @@ function trapFocus(container) {
             return;
         }
         if (e.key !== "Tab") return;
-        const focusables = $$(FOCUSABLE, container).filter((el) => el.offsetParent !== null);
+        const focusables = $$(FOCUSABLE, container).filter((el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+        });
         if (!focusables.length) return;
         const [first, last] = [focusables[0], focusables[focusables.length - 1]];
         if (e.shiftKey && document.activeElement === first) {
@@ -479,7 +521,6 @@ function closeAnyOpenResearch(exceptArticle = null) {
 function setExpanderMaxHeight(article) {
     const expander = $(".rc-expander", article);
     if (!expander) return;
-    // Clamp to viewport and card size; avoid overflows.
     const maxH = Math.max(
         240,
         Math.floor(Math.min(window.innerHeight * 0.8, article.clientHeight * 0.9))
@@ -752,7 +793,8 @@ function setupContactForm() {
         "input",
         (e) => {
             const t = e.target;
-            if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement)) return;
+            if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement))
+                return;
             if (t.checkValidity()) t.classList.remove("is-invalid");
         },
         { passive: true }
@@ -839,9 +881,10 @@ function setupContactForm() {
             showToast({
                 type: "success",
                 title: "Sent",
-                message: result.fallback === "mailto"
-                    ? "Opening your mail client… If it doesn't open, please email me directly."
-                    : "Your message was sent successfully. I’ll get back to you soon.",
+                message:
+                    result.fallback === "mailto"
+                        ? "Opening your mail client… If it doesn't open, please email me directly."
+                        : "Your message was sent successfully. I’ll get back to you soon.",
             });
             form.reset();
             form.classList.remove("was-validated");
@@ -850,7 +893,8 @@ function setupContactForm() {
             showToast({
                 type: "danger",
                 title: "Couldn’t send",
-                message: "Please try again in a moment or email me directly at rahat3286@gmail.com.",
+                message:
+                    "Please try again in a moment or email me directly at rahat3286@gmail.com.",
             });
         }
     });
@@ -863,7 +907,9 @@ function setupTelToasts() {
         async (e) => {
             const telLink = e.target.closest?.('a[href^="tel:"]');
             if (!telLink) return;
-            const num = (telLink.getAttribute("href") || "").replace("tel:", "").trim();
+            const num = (telLink.getAttribute("href") || "")
+                .replace("tel:", "")
+                .trim();
             if (!num) return;
             try {
                 if (navigator.clipboard?.writeText) {
@@ -971,7 +1017,7 @@ function installHeroFallbacks() {
         tried.add(next);
         heroImg.src = next;
     };
-    heroImg.addEventListener("error", tryNext);
+    heroImg.addEventListener("error", tryNext, { once: false });
     if (!currentSrc) tryNext();
 }
 
@@ -1039,11 +1085,12 @@ function readSavedScroll() {
     }
 }
 let saveScrollQueued = false;
+let saveScrollRAFHandle = 0;
 function saveScrollState() {
     if (saveScrollQueued) return;
     saveScrollQueued = true;
-    cancelAnimationFrame(saveScrollRAF);
-    saveScrollRAF = requestAnimationFrame(() => {
+    cancelAnimationFrame(saveScrollRAFHandle);
+    saveScrollRAFHandle = requestAnimationFrame(() => {
         saveScrollQueued = false;
         const state = {
             ts: Date.now(),
@@ -1093,7 +1140,6 @@ function restoreSavedScrollIfAny() {
     if (!backToTopBtn) return;
     const SHOW_AFTER_PX = 250;
     const MAX_WIDTH_TO_SHOW = 992;
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     function computeProgress() {
         const doc = document.documentElement;
@@ -1119,7 +1165,7 @@ function restoreSavedScrollIfAny() {
     }
 
     backToTopBtn.addEventListener("click", () => {
-        window.scrollTo({ top: 0, behavior: prefersReduced.matches ? "auto" : "smooth" });
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
     });
 
     window.addEventListener("scroll", queueUpdate, { passive: true });
@@ -1198,18 +1244,16 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && rightSlider?.dataset.open === "true") setMenuOpen(false);
 });
 
-// Skip-link safeguard: allow default when target is #main-content; intercept only if it points to a section in slide-mode
+// Skip-link safeguard
 if (skipLink) {
     skipLink.addEventListener("click", (e) => {
         const rawHref = skipLink.getAttribute("href") || "";
         const id = rawHref.startsWith("#") ? rawHref.slice(1) : "";
         if (!id) return; // default
         if (id === "main-content") {
-            // native skip to main — let browser handle, then focus main
             requestAnimationFrame(() => mainContent?.focus?.({ preventScroll: true }));
             return;
         }
-        // If it points to a section and we're in desktop slide-mode, handle via router
         if (isDesktop() && document.getElementById(id)?.classList.contains("section")) {
             e.preventDefault();
             showSection(id, true);
@@ -1264,10 +1308,12 @@ window.addEventListener("resize", onResize, { passive: true });
 
 /* ========= INIT ========= */
 window.addEventListener("DOMContentLoaded", () => {
+    // begin top indicator, initialize EmailJS
     playTo(0.35, 600);
     initEmailJS();
 
-    // Small delay to avoid skeleton flash on very fast loads
+    // Small delay to avoid skeleton flash on very fast loads.
+    // If content loads within this delay, we won't show the skeleton at all.
     skeletonTimer = setTimeout(showSkeleton, 160);
 
     const saved = readSavedScroll();
@@ -1275,7 +1321,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     try {
         const shouldOpen = sessionStorage.getItem(MENU_STORAGE_KEY) === "1";
-        if (shouldOpen && !isDesktop()) setMenuOpen(true, { animate: false, focus: false, persist: false });
+        if (shouldOpen && !isDesktop())
+            setMenuOpen(true, { animate: false, focus: false, persist: false });
     } catch {
         /* ignore */
     }
@@ -1288,15 +1335,9 @@ window.addEventListener("DOMContentLoaded", () => {
     installHeroFallbacks();
     initContactAutoFit();
 
-    if (isDesktop()) {
-        sections.forEach((sec) => sec.addEventListener("scroll", saveScrollState, { passive: true }));
-    } else {
-        window.addEventListener("scroll", saveScrollState, { passive: true });
-    }
-
-    // SAFETY: if something delays 'load', ensure .ui-ready eventually applies
+    // Safety: if UI isn't ready after a while (edge cases), mark it ready
     setTimeout(() => {
-        if (!document.documentElement.classList.contains("ui-ready")) {
+        if (!document.documentElement.classList.contains("ui-ready") && !skeletonVisible) {
             markUiReady();
             applyDynamicHeadingClearance();
             maybeStartTypewriter();
@@ -1308,22 +1349,26 @@ window.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("load", () => {
     clearTimeout(skeletonTimer);
+
     if (!skeletonVisible) {
+        // Skeleton never appeared: complete indicator and reveal immediately.
         indicatorEl?.classList.remove("waiting");
         playTo(1, 600);
         setTimeout(
             () => indicatorEl?.classList.remove("visible"),
             prefersReducedMotion() ? 0 : 600
         );
-        markUiReady(); // guarantees animations end-state sticks
+        markUiReady();
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
         maybeStartTypewriter();
         initSkillsOnce();
         maybeTriggerSkillsProgress();
     } else {
+        // Skeleton is visible: fade it out and only then reveal UI (handled within hideSkeleton()).
         hideSkeleton();
     }
+
     setTimeout(maybeTriggerSkillsProgress, 200);
     setTimeout(fitContactText, 120);
 });
