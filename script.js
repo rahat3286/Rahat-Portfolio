@@ -1,19 +1,5 @@
 "use strict";
 
-/* ============================================================================
-   Rahat Portfolio — App JS (refined & patched)
-   - Desktop slide-mode with per-section scroll memory
-   - Mobile smooth-scroll + active nav sync
-   - Right drawer with focus trapping + inert polyfill (a11y)
-   - Research card expanders: slide up to 80% of card and scroll inside
-   - Skills progress animation on view (one-shot; respects R.M.)
-   - Contact form with EmailJS + mailto/Gmail fallback with clear feedback
-   - Email links: Gmail-first (app on mobile, web on desktop) + clipboard copy
-   - Toast system, typewriter (a11y), hero image fallback
-   - Skeleton/progress bar wiring and UI-ready safety (no content bleed-through)
-   - Misc fixes: skip-link safeguard, robust showSection, CQI fallbacks, etc.
-============================================================================ */
-
 /* ========= CONFIG / UTILS ========= */
 const BREAKPOINT = 991.98;
 const isDesktop = () => window.innerWidth > BREAKPOINT;
@@ -28,7 +14,7 @@ const FOCUSABLE = `
 a[href]:not([tabindex="-1"]):not([inert]),
 area[href]:not([tabindex="-1"]):not([inert]),
 button:not([disabled]):not([tabindex="-1"]):not([inert]),
-input:not([disabled]):not([type="hidden"]):not([tabindex="-1"]):not([inert]),
+input:not([disabled"]):not([type="hidden"]):not([tabindex="-1"]):not([inert]),
 select:not([disabled]):not([tabindex="-1"]):not([inert]),
 textarea:not([disabled]):not([tabindex="-1"]):not([inert]),
 [contenteditable="true"]:not([tabindex="-1"]):not([inert]),
@@ -82,7 +68,6 @@ let navLock = false;
 let releaseFocusTrap = null;
 let lastFocusBeforeMenu = null;
 let ioSections = null; // mobile section observer
-let saveScrollRAF = 0;
 const sectionScroll = new Map();
 
 /* ========= INERT POLYFILL ========= */
@@ -509,11 +494,10 @@ function setupResearchCards() {
                 }
                 return;
             }
-            // click outside closes
+            // FIX: only close when clicking completely outside the open research card
             const openArticle = $(".research-card[data-open='true']");
-            if (openArticle) {
-                const exp = $(".rc-expander", openArticle);
-                if (exp && !exp.contains(e.target)) closeAnyOpenResearch();
+            if (openArticle && !openArticle.contains(e.target)) {
+                closeAnyOpenResearch();
             }
         },
         { passive: false }
@@ -700,7 +684,7 @@ function setupContactForm() {
         submitBtn.setAttribute("aria-busy", on ? "true" : "false");
         if (!originalIconEl) originalIconEl = submitBtn.querySelector("i");
         if (on) {
-            // Leave the small inline spinner for form feedback (page skeleton handles global loading)
+            // Keep a small inline spinner for form feedback; global skeleton handles page loads
             if (!spinnerEl) {
                 spinnerEl = document.createElement("span");
                 spinnerEl.className = "spinner-border spinner-border-sm";

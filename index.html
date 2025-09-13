@@ -18,6 +18,51 @@
         <!-- App styles -->
         <link rel="preload" as="image" href="hero-image.png">
         <link rel="stylesheet" href="style.css">
+        <!-- 🔧 Hotfixes / small overrides (load after style.css) -->
+        <style>
+      /* 1) Bring back the blinking availability dot */
+      .availability-badge .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--accent-color, #2f7d5a);
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(47, 125, 90, 0.6);
+        animation: dotPulse 1.4s ease-in-out infinite;
+      }
+      @keyframes dotPulse {
+        0% {
+          transform: scale(0.85);
+          box-shadow: 0 0 0 0 rgba(47, 125, 90, 0.6);
+          opacity: 0.8;
+        }
+        50% {
+          transform: scale(1.1);
+          box-shadow: 0 0 0 6px rgba(47, 125, 90, 0);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.85);
+          box-shadow: 0 0 0 0 rgba(47, 125, 90, 0);
+          opacity: 0.8;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .availability-badge .dot {
+          animation: none !important;
+        }
+      }
+
+      /* 2) Partial border sizes — hero larger, brand smaller (clearer difference) */
+      .partial-border-box.partial-border--hero {
+        --corner-width: 1.5em !important;
+        --corner-height: 1.5em !important;
+      }
+      .partial-border-box.partial-border--brand {
+        --corner-width: 0.7em !important;
+        --corner-height: 0.7em !important;
+      }
+        </style>
         <script>
       // flip no-js -> js ASAP
       document.documentElement.classList.remove("no-js");
@@ -207,7 +252,9 @@
                                             <span class="hc-icon">
                                                 <i class="fa-brands fa-researchgate" aria-hidden="true"></i>
                                             </span>
-                                            <span class="hc-label" aria-hidden="true">ResearchGate</span>
+                                            <span class="hc-label" aria-hidden="true">ResearchGate
+                                            </span
+                      >
                                         </a>
                                         <a
                                             class="hc-item"
@@ -268,14 +315,18 @@
                                 <ul class="story-points p-3">
                                     <li>
                                         <p class="text-justify text-secondary">
-                                            Skilled in GIS, Remote Sensing, Python, and Data Analysis, with research experience ranging
-                      from phytoplankton studies in river ecosystems to land-use and climate-data mapping.
+                                            Skilled in GIS, Remote Sensing, Python, and Data Analysis,
+                      with research experience ranging from phytoplankton
+                      studies in river ecosystems to land-use and climate-data
+                      mapping.
                                         </p>
                                     </li>
                                     <li>
                                         <p class="text-justify text-secondary">
-                                            Excited to apply knowledge, creativity, and dedication to impactful projects by collaborating
-                      with experts and forward-thinking organizations focused on environmental conservation.
+                                            Excited to apply knowledge, creativity, and dedication to
+                      impactful projects by collaborating with experts and
+                      forward-thinking organizations focused on environmental
+                      conservation.
                                         </p>
                                     </li>
                                 </ul>
@@ -287,11 +338,17 @@
                                             </div>
                                             <div class="edu-content">
                                                 <h3 class="edu-title">Bachelor's Degree</h3>
-                                                <div class="edu-major">B.Sc.(Hons.) in Environmental Science</div>
-                                                <div class="edu-institute">Mawlana Bhashani Science and Technology University</div>
+                                                <div class="edu-major">
+                                                    B.Sc.(Hons.) in Environmental Science
+                                                </div>
+                                                <div class="edu-institute">
+                                                    Mawlana Bhashani Science and Technology University
+                                                </div>
                                                 <div class="edu-tags">
                                                     <span class="chip chip-year chip-green">2025</span>
-                                                    <span class="chip chip-grade chip-green">CGPA 3.70 (7th semester)</span>
+                                                    <span class="chip chip-grade chip-green">CGPA 3.70 (7th semester)
+                                                    </span
+                          >
                                                 </div>
                                             </div>
                                         </div>
@@ -330,7 +387,9 @@
                             </div>
                             <div class="col-lg-4 col-md-12">
                                 <div class="card border-0 shadow-soft h-100 p-3 core-values-shell">
-                                    <h3 class="h5 fw-bold text-success-emphasis mb-3 text-center">Core Values</h3>
+                                    <h3 class="h5 fw-bold text-success-emphasis mb-3 text-center">
+                                        Core Values
+                                    </h3>
                                     <div class="corevals vstack gap-3">
                                         <article class="cv-card" aria-label="Sustainability Focus">
                                             <div class="cv-inner text-center">
@@ -343,11 +402,15 @@
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
                                                     <div class="cv-popover" role="tooltip">
-                                                        <p class="cv-desc">Committed to environmental conservation and sustainable practices</p>
+                                                        <p class="cv-desc">
+                                                            Committed to environmental conservation and
+                              sustainable practices
+                                                        </p>
                                                     </div>
                                                 </details>
                                                 <div class="cv-desc-inline" aria-hidden="true">
-                                                    Committed to environmental conservation and sustainable practices
+                                                    Committed to environmental conservation and sustainable
+                          practices
                                                 </div>
                                             </div>
                                         </article>
@@ -362,11 +425,15 @@
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
                                                     <div class="cv-popover" role="tooltip">
-                                                        <p class="cv-desc">Eager to work with experts and organizations for meaningful impact</p>
+                                                        <p class="cv-desc">
+                                                            Eager to work with experts and organizations for meaningful
+                              impact
+                                                        </p>
                                                     </div>
                                                 </details>
                                                 <div class="cv-desc-inline" aria-hidden="true">
-                                                    Eager to work with experts and organizations for meaningful impact
+                                                    Eager to work with experts and organizations for meaningful
+                          impact
                                                 </div>
                                             </div>
                                         </article>
@@ -381,11 +448,15 @@
                                                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                                                     </summary>
                                                     <div class="cv-popover" role="tooltip">
-                                                        <p class="cv-desc">Applying creativity and modern techniques to environmental challenges</p>
+                                                        <p class="cv-desc">
+                                                            Applying creativity and modern techniques to environmental
+                              challenges
+                                                        </p>
                                                     </div>
                                                 </details>
                                                 <div class="cv-desc-inline" aria-hidden="true">
-                                                    Applying creativity and modern techniques to environmental challenges
+                                                    Applying creativity and modern techniques to environmental
+                          challenges
                                                 </div>
                                             </div>
                                         </article>
@@ -427,13 +498,16 @@
                                                 </div>
                                                 <div class="d-flex flex-wrap gap-2">
                                                     <span class="badge rounded-pill badge-soft-success">2024</span>
-                                                    <span class="badge rounded-pill badge-soft-muted">Research Project</span>
+                                                    <span class="badge rounded-pill badge-soft-muted">Research Project
+                                                    </span
+                          >
                                                 </div>
                                             </div>
                                             <div class="rc-title-wrap d-flex flex-grow-1 align-items-center justify-content-center text-center">
                                                 <h3 id="rc1-title" class="h5 fw-bold text-success-emphasis mb-0 rc-title-collapsed">
-                                                    Assessment of Phytoplankton Abundance with Seasonality, Environmental Parameters and
-                          Chlorophyll-a Content in Turag River, Bangladesh
+                                                    Assessment of Phytoplankton Abundance with Seasonality,
+                          Environmental Parameters and Chlorophyll-a Content in Turag
+                          River, Bangladesh
                                                 </h3>
                                             </div>
                                             <div class="rc-actions mt-auto d-flex flex-wrap gap-2">
@@ -457,7 +531,7 @@
                                                     <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
                                                 </a>
                                             </div>
-                                            <!-- Expander (slides up to 80% of the card height; scrollable inside) -->
+                                            <!-- Expander -->
                                             <div
                                                 id="rc1-details"
                                                 class="rc-expander"
@@ -472,14 +546,19 @@
                                                 <div class="rc-expander-inner">
                                                     <div class="rc-expander-body">
                                                         <p class="text-secondary mb-3">
-                                                            Comprehensive study analyzing relationships between phytoplankton populations, seasonal
-                              variation, and environmental factors in the Turag River ecosystem.
+                                                            Comprehensive study analyzing relationships between
+                              phytoplankton populations, seasonal variation, and
+                              environmental factors in the Turag River ecosystem.
                                                         </p>
                                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                                             <span class="chip chip-outline-success">Field Research</span>
                                                             <span class="chip chip-outline-success">Data Analysis</span>
-                                                            <span class="chip chip-outline-success">Environmental Assessment</span>
-                                                            <span class="chip chip-outline-success">Water Quality Analysis</span>
+                                                            <span class="chip chip-outline-success">Environmental Assessment
+                                                            </span
+                              >
+                                                            <span class="chip chip-outline-success">Water Quality Analysis
+                                                            </span
+                              >
                                                         </div>
                                                     </div>
                                                     <div class="rc-expander-actions">
@@ -506,12 +585,15 @@
                                                 </div>
                                                 <div class="d-flex flex-wrap gap-2">
                                                     <span class="badge rounded-pill badge-soft-success">2025</span>
-                                                    <span class="badge rounded-pill badge-soft-muted">Content Contribution</span>
+                                                    <span class="badge rounded-pill badge-soft-muted">Content Contribution
+                                                    </span
+                          >
                                                 </div>
                                             </div>
                                             <div class="rc-title-wrap d-flex flex-grow-1 align-items-center justify-content-center text-center">
                                                 <h3 id="rc2-title" class="h5 fw-bold text-success-emphasis mb-0 rc-title-collapsed">
-                                                    Enhancing Agricultural Drought Monitoring and Resilience in North-Western Bangladesh
+                                                    Enhancing Agricultural Drought Monitoring and Resilience in
+                          North-Western Bangladesh
                                                 </h3>
                                             </div>
                                             <div class="rc-actions mt-auto d-flex flex-wrap gap-2">
@@ -535,7 +617,7 @@
                                                     <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
                                                 </a>
                                             </div>
-                                            <!-- Expander (slides up to 80% of the card height; scrollable inside) -->
+                                            <!-- Expander -->
                                             <div
                                                 id="rc2-details"
                                                 class="rc-expander"
@@ -550,8 +632,9 @@
                                                 <div class="rc-expander-inner">
                                                     <div class="rc-expander-body">
                                                         <p class="text-secondary mb-3">
-                                                            Multi-sensor approach integrating GNSS-R and soil moisture with SPI and NDVI for improved
-                              drought monitoring and resilience.
+                                                            Multi-sensor approach integrating GNSS-R and soil moisture
+                              with SPI and NDVI for improved drought monitoring and
+                              resilience.
                                                         </p>
                                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                                             <span class="chip chip-outline-success">Remote Sensing</span>
@@ -581,10 +664,13 @@
                             <div class="col-12 col-lg-7">
                                 <section class="card impact-card border-0 shadow-soft h-100" aria-label="Research impact">
                                     <div class="card-body p-3 p-sm-4 p-md-5 d-flex flex-column">
-                                        <h3 class="h4 fw-bold text-center text-success-emphasis mb-2">Research Impact</h3>
+                                        <h3 class="h4 fw-bold text-center text-success-emphasis mb-2">
+                                            Research Impact
+                                        </h3>
                                         <p class="text-center text-secondary mx-auto impact-lead">
-                                            Contributing to environmental science through data-driven research that addresses real-world
-                      challenges in water quality assessment and agricultural sustainability.
+                                            Contributing to environmental science through data-driven
+                      research that addresses real-world challenges in water
+                      quality assessment and agricultural sustainability.
                                         </p>
                                         <div class="impact-grid mt-3 mt-md-4">
                                             <div class="impact-feature text-center h-100">
@@ -631,11 +717,14 @@
                             <span>Skills &amp; Capabilities</span>
                         </span>
                     </div>
-                    <h2 id="skills-title" class="section-title text-center">Skills &amp; Expertise</h2>
+                    <h2 id="skills-title" class="section-title text-center">
+                        Skills &amp; Expertise
+                    </h2>
                 </div>
                 <div class="section-body w-100">
                     <div class="container px-2 px-sm-3">
                         <div class="row g-3 g-lg-4 mb-4">
+                            <!-- (skills cards unchanged) -->
                             <!-- Primary Expertise -->
                             <div class="col-12 col-lg-6 col-xl-3 d-flex">
                                 <div class="card shadow-soft skills-card sc-primary flex-fill">
@@ -774,6 +863,7 @@
                                                     role="progressbar"
                                                     aria-label="GIS Mapping"
                                                     aria-valuenow="92"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:92%"
                                                 >
@@ -790,6 +880,7 @@
                                                     role="progressbar"
                                                     aria-label="Environmental Assessment"
                                                     aria-valuenow="88"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:88%"
                                                 >
@@ -855,6 +946,7 @@
                                                     role="progressbar"
                                                     aria-label="Statistical Analysis"
                                                     aria-valuenow="79"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:79%"
                                                 >
@@ -871,6 +963,7 @@
                                                     role="progressbar"
                                                     aria-label="Climate Data Mapping"
                                                     aria-valuenow="75"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:75%"
                                                 >
@@ -919,6 +1012,7 @@
                                                     role="progressbar"
                                                     aria-label="Excel"
                                                     aria-valuenow="85"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:85%"
                                                 >
@@ -935,6 +1029,7 @@
                                                     role="progressbar"
                                                     aria-label="PowerPoint"
                                                     aria-valuenow="88"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:88%"
                                                 >
@@ -951,6 +1046,7 @@
                                                     role="progressbar"
                                                     aria-label="10-finger typing"
                                                     aria-valuenow="90"
+                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:90%"
                                                 >
@@ -970,13 +1066,16 @@
                                         <span class="services-icon">
                                             <i class="bi bi-bullseye" aria-hidden="true"></i>
                                         </span>
-                                        <h3 class="h4 fw-bold m-0 services-inline-title">Services &amp; Aspirations</h3>
+                                        <h3 class="h4 fw-bold m-0 services-inline-title">
+                                            Services &amp; Aspirations
+                                        </h3>
                                     </div>
                                 </div>
                                 <p class="text-center text-secondary mx-auto services-lead d-none d-lg-block">
-                                    Eager to join an environmental consultancy or contribute to environmental projects. I add value
-                  through comprehensive analysis, innovative research approaches, and dedication to environmental
-                  conservation.
+                                    Eager to join an environmental consultancy or contribute to
+                  environmental projects. I add value through comprehensive
+                  analysis, innovative research approaches, and dedication to
+                  environmental conservation.
                                 </p>
                                 <div class="d-flex flex-wrap justify-content-center gap-2 gap-sm-3 my-3 my-md-4">
                                     <button class="btn btn-outline-success rounded-pill btn-sm px-3">
@@ -1000,7 +1099,11 @@
                                 </div>
                                 <div class="cta-bar mx-auto text-center">
                                     <div class="fw-semibold">Ready to Collaborate?</div>
-                                    <small class="text-secondary">Let’s work together on meaningful environmental projects.</small>
+                                    <small class="text-secondary">
+                                        Let’s work together on meaningful environmental
+                    projects.
+                                    </small
+                  >
                                 </div>
                             </div>
                         </div>
@@ -1030,7 +1133,9 @@
                             <div class="col-12 col-lg-5 d-flex">
                                 <section class="card border-0 shadow-soft contact-info-card flex-fill" aria-label="Contact information">
                                     <div class="card-body p-3 p-sm-4 p-md-5 d-flex flex-column">
-                                        <h3 class="h4 fw-bold text-success-emphasis mb-3 text-center text-lg-start">Contact Information</h3>
+                                        <h3 class="h4 fw-bold text-success-emphasis mb-3 text-center text-lg-start">
+                                            Contact Information
+                                        </h3>
                                         <div class="ci-list d-flex flex-column gap-3">
                                             <a
                                                 class="ci-item"
@@ -1151,7 +1256,9 @@
                                                     autocomplete="name"
                                                     required
                                                 >
-                                                <div class="invalid-feedback">Please enter your name (min 2 characters).</div>
+                                                <div class="invalid-feedback">
+                                                    Please enter your name (min 2 characters).
+                                                </div>
                                             </div>
                                             <div class="mb-2">
                                                 <label for="email" class="form-label">Email</label>
@@ -1165,7 +1272,9 @@
                                                     autocomplete="email"
                                                     required
                                                 >
-                                                <div class="invalid-feedback">Please enter a valid email address.</div>
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid email address.
+                                                </div>
                                             </div>
                                             <div class="mb-3">
                                                 <label for="message" class="form-label">Message</label>
@@ -1178,7 +1287,9 @@
                                                     minlength="10"
                                                     required
                                                 ></textarea>
-                                                <div class="invalid-feedback">Please enter at least 10 characters.</div>
+                                                <div class="invalid-feedback">
+                                                    Please enter at least 10 characters.
+                                                </div>
                                             </div>
                                             <button id="contactSubmit" type="submit" class="btn btn-success btn-lg w-100 d-inline-flex align-items-center justify-content-center gap-2">
                                                 <i class="bi bi-send"></i>
@@ -1197,6 +1308,7 @@
         <div id="reload-indicator" aria-hidden="true">
             <span class="fill"></span>
         </div>
+        <!-- NOTE: .skel-content -> .skel-main to match CSS -->
         <div id="page-skeleton" aria-hidden="true" hidden>
             <div class="skel-center" role="status" aria-live="polite">
                 <span class="skel-spinner" aria-hidden="true"></span>
@@ -1204,7 +1316,8 @@
             </div>
             <div class="skel-topbar skel-shimmer"></div>
             <div class="skel-sidebar skel-shimmer"></div>
-            <div class="skel-content">
+            <!-- renamed for CSS match -->
+            <div class="skel-main">
                 <div class="skel-shimmer" style="height: 28px; border-radius: 8px"></div>
                 <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
                 <div class="skel-shimmer" style="height: 18px; border-radius: 8px"></div>
@@ -1217,16 +1330,17 @@
         <div id="toast-stack" aria-atomic="true"></div>
         <noscript>
             <div style="
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background: #fff;
-        border-bottom: 1px solid #ddd;
-        padding: 1rem;
-        font-family: system-ui;
-      ">
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          background: #fff;
+          border-bottom: 1px solid #ddd;
+          padding: 1rem;
+          font-family: system-ui;
+        ">
                 <strong>JavaScript is disabled.</strong>
-                The site still works; animated navigation and form enhancements are unavailable.
+                The site still works; animated navigation and form enhancements are
+        unavailable.
             </div>
         </noscript>
         <!-- App JS (single, compact) -->
