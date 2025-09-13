@@ -178,6 +178,7 @@
                                             </span>
                                             <span class="hc-label" aria-hidden="true">Mobile</span>
                                         </a>
+                                        <!-- Works with smart email handler (also captures mailto:) -->
                                         <a class="hc-item" href="mailto:rahat3286@gmail.com" aria-label="Compose email">
                                             <span class="hc-icon">
                                                 <i class="bi bi-envelope-fill" aria-hidden="true"></i>
@@ -456,6 +457,7 @@
                                                     <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
                                                 </a>
                                             </div>
+                                            <!-- Expander (slides up to 80% of the card height; scrollable inside) -->
                                             <div
                                                 id="rc1-details"
                                                 class="rc-expander"
@@ -533,6 +535,7 @@
                                                     <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
                                                 </a>
                                             </div>
+                                            <!-- Expander (slides up to 80% of the card height; scrollable inside) -->
                                             <div
                                                 id="rc2-details"
                                                 class="rc-expander"
@@ -771,7 +774,6 @@
                                                     role="progressbar"
                                                     aria-label="GIS Mapping"
                                                     aria-valuenow="92"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:92%"
                                                 >
@@ -788,7 +790,6 @@
                                                     role="progressbar"
                                                     aria-label="Environmental Assessment"
                                                     aria-valuenow="88"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:88%"
                                                 >
@@ -854,7 +855,6 @@
                                                     role="progressbar"
                                                     aria-label="Statistical Analysis"
                                                     aria-valuenow="79"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:79%"
                                                 >
@@ -871,7 +871,6 @@
                                                     role="progressbar"
                                                     aria-label="Climate Data Mapping"
                                                     aria-valuenow="75"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:75%"
                                                 >
@@ -920,7 +919,6 @@
                                                     role="progressbar"
                                                     aria-label="Excel"
                                                     aria-valuenow="85"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:85%"
                                                 >
@@ -937,7 +935,6 @@
                                                     role="progressbar"
                                                     aria-label="PowerPoint"
                                                     aria-valuenow="88"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:88%"
                                                 >
@@ -954,7 +951,6 @@
                                                     role="progressbar"
                                                     aria-label="10-finger typing"
                                                     aria-valuenow="90"
-                                                    aria-valuemin="0"
                                                     aria-valuemax="100"
                                                     style="--val:90%"
                                                 >
@@ -1201,10 +1197,9 @@
         <div id="reload-indicator" aria-hidden="true">
             <span class="fill"></span>
         </div>
-        <!-- CLEANED-UP SKELETON (spinner removed) -->
         <div id="page-skeleton" aria-hidden="true" hidden>
             <div class="skel-center" role="status" aria-live="polite">
-                <!-- spinner removed by request -->
+                <span class="skel-spinner" aria-hidden="true"></span>
                 <span>Loading portfolio…</span>
             </div>
             <div class="skel-topbar skel-shimmer"></div>
@@ -1222,14 +1217,14 @@
         <div id="toast-stack" aria-atomic="true"></div>
         <noscript>
             <div style="
-          position: fixed;
-          inset: 0;
-          z-index: 9999;
-          background: #fff;
-          border-bottom: 1px solid #ddd;
-          padding: 1rem;
-          font-family: system-ui;
-        ">
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #fff;
+        border-bottom: 1px solid #ddd;
+        padding: 1rem;
+        font-family: system-ui;
+      ">
                 <strong>JavaScript is disabled.</strong>
                 The site still works; animated navigation and form enhancements are unavailable.
             </div>

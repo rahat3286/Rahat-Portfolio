@@ -1,15 +1,16 @@
 "use strict";
 
 /* ============================================================================
-   Rahat Portfolio — App JS (refined, with hardened skeleton lifecycle)
+   Rahat Portfolio — App JS (refined & patched)
    - Desktop slide-mode with per-section scroll memory
    - Mobile smooth-scroll + active nav sync
    - Right drawer with focus trapping + inert polyfill (a11y)
-   - Research card expanders (max-height, safer toggles)
+   - Research card expanders: slide up to 80% of card and scroll inside
    - Skills progress animation on view (one-shot; respects R.M.)
-   - Contact form with EmailJS + mailto fallback with clear feedback
+   - Contact form with EmailJS + mailto/Gmail fallback with clear feedback
+   - Email links: Gmail-first (app on mobile, web on desktop) + clipboard copy
    - Toast system, typewriter (a11y), hero image fallback
-   - Skeleton/progress bar: NO bleed-through; UI only revealed after fade-out
+   - Skeleton/progress bar wiring and UI-ready safety (no content bleed-through)
    - Misc fixes: skip-link safeguard, robust showSection, CQI fallbacks, etc.
 ============================================================================ */
 
@@ -84,7 +85,7 @@ let ioSections = null; // mobile section observer
 let saveScrollRAF = 0;
 const sectionScroll = new Map();
 
-/* ========= INERT POLYFILL (for browsers w/o native inert) ========= */
+/* ========= INERT POLYFILL ========= */
 const inertSupported = "inert" in HTMLElement.prototype;
 /** Disable/restore focus + interaction within a subtree. */
 function setInert(el, makeInert) {
@@ -160,63 +161,33 @@ function completeIndicator() {
 let skeletonTimer = 0;
 let skeletonVisible = false;
 
-/** Show the skeleton overlay and make the rest of the UI non-visible. */
 function showSkeleton() {
-    if (!skeletonEl || skeletonVisible) return;
+    if (!skeletonEl) return;
     skeletonEl.hidden = false;
     skeletonEl.dataset.visible = "true";
     document.body.setAttribute("aria-busy", "true"); // CSS hides UI to prevent bleed-through
     skeletonVisible = true;
     startIndicatorHold();
 }
-
-/**
- * Hide the skeleton overlay.
- * Guarantee: main UI is made visible ONLY AFTER the fade-out completes.
- */
+function markUiReady() {
+    document.documentElement.classList.add("ui-ready");
+    visualsReady = true;
+}
 function hideSkeleton() {
-    if (!skeletonEl || !skeletonVisible) return;
+    if (!skeletonEl) return;
     skeletonEl.dataset.visible = "false";
+    document.body.removeAttribute("aria-busy");
     skeletonVisible = false;
-
-    // Finish the top indicator while we fade out
     completeIndicator();
-
-    const after = () => {
-        // Unblock UI *after* skeleton finished its transition
+    setTimeout(() => {
         skeletonEl.hidden = true;
-        document.body.removeAttribute("aria-busy");
-
-        // Mark UI ready (enables entry animations) and kick post-load hooks
-        markUiReady();
+        markUiReady(); // ensure animated brand/hero end state sticks
         applyDynamicHeadingClearance();
         restoreSavedScrollIfAny();
         maybeStartTypewriter();
         initSkillsOnce();
         maybeTriggerSkillsProgress();
-
-        // cleanup listener
-        skeletonEl.removeEventListener("transitionend", onEnd);
-        clearTimeout(fallbackTO);
-    };
-
-    const onEnd = (e) => {
-        if (e.target !== skeletonEl) return; // ensure we respond to the overlay's transition
-        after();
-    };
-
-    // Prefer transitionend; also schedule a small fallback timer
-    if (!prefersReducedMotion()) {
-        skeletonEl.addEventListener("transitionend", onEnd, { once: true });
-        var fallbackTO = setTimeout(after, 400); // safety net
-    } else {
-        after();
-    }
-}
-
-function markUiReady() {
-    document.documentElement.classList.add("ui-ready");
-    visualsReady = true;
+    }, prefersReducedMotion() ? 0 : 120);
 }
 
 /* ========= NAV / SECTIONS ========= */
@@ -251,7 +222,6 @@ function applyDynamicHeadingClearance() {
 }
 
 function syncActiveUI(targetId) {
-    // Ignore if unknown id
     if (!document.getElementById(targetId)) return;
     sidebarLinks.forEach((a) => {
         const active = getTargetFrom(a) === targetId;
@@ -274,7 +244,6 @@ function showSection(targetId, pushHash = true, { preserveScroll = false } = {})
     const target = document.getElementById(targetId);
     if (!target) return;
 
-    // If already active/visible, just ensure focus + sync + optional scroll restore
     if (currentId === targetId) {
         if (isDesktop()) {
             if (!preserveScroll) restoreSectionScroll(target);
@@ -297,9 +266,7 @@ function showSection(targetId, pushHash = true, { preserveScroll = false } = {})
 
     if (isDesktop()) {
         saveActiveSectionScroll();
-        sections.forEach(
-            (sec) => (sec.dataset.active = sec === target ? "true" : "false")
-        );
+        sections.forEach((sec) => (sec.dataset.active = sec === target ? "true" : "false"));
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
         requestAnimationFrame(() => {
             if (!preserveScroll) restoreSectionScroll(target);
@@ -329,11 +296,8 @@ function setupIntersectionObserver() {
         ioSections = new IntersectionObserver(
             (entries) => {
                 if (navLock) return;
-                // Get entries entering viewport
                 const visible = entries.filter((e) => e.isIntersecting);
                 if (!visible.length) return;
-
-                // Choose section nearest to top; break ties by larger ratio
                 visible.sort((a, b) => {
                     const ta = a.boundingClientRect.top;
                     const tb = b.boundingClientRect.top;
@@ -352,7 +316,6 @@ function setupIntersectionObserver() {
         );
         sections.forEach((s) => ioSections.observe(s));
     } else {
-        // Lightweight fallback
         const onScroll = () => {
             if (navLock) return;
             let best = { id: null, top: Infinity };
@@ -374,9 +337,7 @@ function setupIntersectionObserver() {
 
 function initMode({ initialId = null, preserveScroll = false } = {}) {
     const startId =
-        (location.hash &&
-            document.getElementById(location.hash.slice(1)) &&
-            location.hash.slice(1)) ||
+        (location.hash && document.getElementById(location.hash.slice(1)) && location.hash.slice(1)) ||
         initialId ||
         sections[0]?.id ||
         "home";
@@ -494,9 +455,9 @@ function setExpanderVisibility(expander, open) {
     if (!expander) return;
     if (open) {
         expander.hidden = false;
-        expander.setAttribute("aria-hidden", "false");
+        expander.setAttribute("aria-hidden", "false"); // CSS anim + height:80% kicks in
         setInert(expander, false);
-        void expander.offsetWidth; // force style recalc to kick animation
+        void expander.offsetWidth; // force recalc
         return;
     }
     expander.setAttribute("aria-hidden", "true");
@@ -518,18 +479,9 @@ function closeAnyOpenResearch(exceptArticle = null) {
     });
 }
 
-function setExpanderMaxHeight(article) {
-    const expander = $(".rc-expander", article);
-    if (!expander) return;
-    const maxH = Math.max(
-        240,
-        Math.floor(Math.min(window.innerHeight * 0.8, article.clientHeight * 0.9))
-    );
-    expander.style.maxHeight = `${maxH}px`;
-}
+// legacy hook kept for compatibility; CSS now drives 80% height
 function adjustOpenResearchExpander() {
-    const open = $(".research-card[data-open='true']");
-    if (open) setExpanderMaxHeight(open);
+    // No manual sizing needed; .rc-expander[aria-hidden="false"] uses height:80% of card.
 }
 
 function setupResearchCards() {
@@ -553,7 +505,6 @@ function setupResearchCards() {
                     article.dataset.open = "true";
                     btn.setAttribute("aria-expanded", "true");
                     setExpanderVisibility(expander, true);
-                    setExpanderMaxHeight(article);
                     setTimeout(() => $(".rc-close", expander)?.focus({ preventScroll: true }), 10);
                 }
                 return;
@@ -717,7 +668,7 @@ function setupSkillsObserver() {
     }
 }
 
-/* ========= CONTACT FORM ========= */
+/* ========= CONTACT FORM (EmailJS + mailto fallback) ========= */
 const EMAILJS_CFG = {
     PUBLIC_KEY: "G5fgtKtfm0tx0NWHU",
     SERVICE_ID: "service_w4wxv6x",
@@ -749,6 +700,7 @@ function setupContactForm() {
         submitBtn.setAttribute("aria-busy", on ? "true" : "false");
         if (!originalIconEl) originalIconEl = submitBtn.querySelector("i");
         if (on) {
+            // Leave the small inline spinner for form feedback (page skeleton handles global loading)
             if (!spinnerEl) {
                 spinnerEl = document.createElement("span");
                 spinnerEl.className = "spinner-border spinner-border-sm";
@@ -793,8 +745,7 @@ function setupContactForm() {
         "input",
         (e) => {
             const t = e.target;
-            if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement))
-                return;
+            if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement)) return;
             if (t.checkValidity()) t.classList.remove("is-invalid");
         },
         { passive: true }
@@ -821,7 +772,6 @@ function setupContactForm() {
         const to = form.dataset.mailto?.trim() || "rahat3286@gmail.com";
         const subject = encodeURIComponent(`Portfolio message from ${payload.name}`);
         const body = encodeURIComponent(`${payload.message}\n\n— ${payload.name} <${payload.email}>`);
-        // Opening mailto works best on user gesture; this runs in submit handler.
         location.href = `mailto:${to}?subject=${subject}&body=${body}`;
         return { ok: true, fallback: "mailto" };
     };
@@ -893,23 +843,20 @@ function setupContactForm() {
             showToast({
                 type: "danger",
                 title: "Couldn’t send",
-                message:
-                    "Please try again in a moment or email me directly at rahat3286@gmail.com.",
+                message: "Please try again in a moment or email me directly at rahat3286@gmail.com.",
             });
         }
     });
 }
 
-/* ========= PHONE ICON COPY FEEDBACK ========= */
+/* ========= PHONE + EMAIL LINKS ENHANCEMENTS ========= */
 function setupTelToasts() {
     document.addEventListener(
         "click",
         async (e) => {
             const telLink = e.target.closest?.('a[href^="tel:"]');
             if (!telLink) return;
-            const num = (telLink.getAttribute("href") || "")
-                .replace("tel:", "")
-                .trim();
+            const num = (telLink.getAttribute("href") || "").replace("tel:", "").trim();
             if (!num) return;
             try {
                 if (navigator.clipboard?.writeText) {
@@ -923,6 +870,98 @@ function setupTelToasts() {
             } catch {
                 /* ignore copy errors */
             }
+        },
+        { passive: false }
+    );
+}
+
+function setupEmailLinks() {
+    const isMobileUA = () =>
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    const openGmailCompose = ({ to, subject = "", body = "" }) => {
+        const enc = (s) => encodeURIComponent(s || "");
+        const web = `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(to)}&su=${enc(subject)}&body=${enc(body)}`;
+
+        // attempt to copy address to clipboard for convenience
+        try {
+            navigator.clipboard?.writeText?.(to);
+        } catch {
+            /* ignore */
+        }
+
+        // Desktop: open Gmail web compose directly
+        if (!isMobileUA()) {
+            window.open(web, "_blank", "noopener,noreferrer");
+            showToast({
+                type: "info",
+                title: "Compose email",
+                message: "Opening Gmail on the web. Address copied to clipboard.",
+            });
+            return;
+        }
+
+        // Mobile: try Gmail app deep link first, then fall back to web Gmail compose
+        const isiOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+        const appUrl = isiOS
+            ? `googlegmail://co?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}`
+            : `intent://co?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}#Intent;scheme=googlegmail;package=com.google.android.gm;end`;
+
+        let didHide = false;
+        const cleanup = () => document.removeEventListener("visibilitychange", onHide);
+        const onHide = () => {
+            if (document.hidden) {
+                didHide = true;
+                cleanup();
+            }
+        };
+        document.addEventListener("visibilitychange", onHide, { passive: true });
+
+        const timer = setTimeout(() => {
+            cleanup();
+            if (!didHide) {
+                // App not available / blocked → fall back to Gmail web
+                window.location.href = web;
+            }
+        }, 800);
+
+        try {
+            window.location.href = appUrl;
+            showToast({
+                type: "info",
+                title: "Compose email",
+                message: "Trying to open Gmail app… Address copied to clipboard.",
+            });
+        } catch {
+            clearTimeout(timer);
+            cleanup();
+            window.location.href = web;
+        }
+    };
+
+    document.addEventListener(
+        "click",
+        (e) => {
+            const mailEl =
+                e.target.closest?.('a[href^="mailto:"]') ||
+                e.target.closest?.('a[data-kind="email"]');
+            if (!mailEl) return;
+
+            e.preventDefault();
+            const dataEmail = mailEl.getAttribute("data-email")?.trim();
+            const href = mailEl.getAttribute("href") || "";
+            let to = dataEmail || href.replace(/^mailto:/i, "").split("?")[0] || "rahat3286@gmail.com";
+
+            // Optional: extract subject/body from href if present
+            let subject = "";
+            let body = "";
+            if (href.includes("?")) {
+                const qs = new URLSearchParams(href.split("?")[1]);
+                subject = qs.get("subject") || qs.get("su") || "";
+                body = qs.get("body") || "";
+            }
+
+            openGmailCompose({ to, subject, body });
         },
         { passive: false }
     );
@@ -1085,12 +1124,12 @@ function readSavedScroll() {
     }
 }
 let saveScrollQueued = false;
-let saveScrollRAFHandle = 0;
+let saveScrollRAF2 = 0;
 function saveScrollState() {
     if (saveScrollQueued) return;
     saveScrollQueued = true;
-    cancelAnimationFrame(saveScrollRAFHandle);
-    saveScrollRAFHandle = requestAnimationFrame(() => {
+    cancelAnimationFrame(saveScrollRAF2);
+    saveScrollRAF2 = requestAnimationFrame(() => {
         saveScrollQueued = false;
         const state = {
             ts: Date.now(),
@@ -1249,7 +1288,7 @@ if (skipLink) {
     skipLink.addEventListener("click", (e) => {
         const rawHref = skipLink.getAttribute("href") || "";
         const id = rawHref.startsWith("#") ? rawHref.slice(1) : "";
-        if (!id) return; // default
+        if (!id) return;
         if (id === "main-content") {
             requestAnimationFrame(() => mainContent?.focus?.({ preventScroll: true }));
             return;
@@ -1298,7 +1337,7 @@ function onResize() {
             applyDynamicHeadingClearance();
         }
         maybeTriggerSkillsProgress();
-        adjustOpenResearchExpander();
+        adjustOpenResearchExpander(); // CSS handles 80% height; keep call as no-op for safety
         wasDesktop = nowDesktop;
         syncBrandTop();
         fitContactText();
@@ -1308,12 +1347,10 @@ window.addEventListener("resize", onResize, { passive: true });
 
 /* ========= INIT ========= */
 window.addEventListener("DOMContentLoaded", () => {
-    // begin top indicator, initialize EmailJS
     playTo(0.35, 600);
     initEmailJS();
 
-    // Small delay to avoid skeleton flash on very fast loads.
-    // If content loads within this delay, we won't show the skeleton at all.
+    // Small delay to avoid skeleton flash on very fast loads
     skeletonTimer = setTimeout(showSkeleton, 160);
 
     const saved = readSavedScroll();
@@ -1321,8 +1358,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     try {
         const shouldOpen = sessionStorage.getItem(MENU_STORAGE_KEY) === "1";
-        if (shouldOpen && !isDesktop())
-            setMenuOpen(true, { animate: false, focus: false, persist: false });
+        if (shouldOpen && !isDesktop()) setMenuOpen(true, { animate: false, focus: false, persist: false });
     } catch {
         /* ignore */
     }
@@ -1332,12 +1368,18 @@ window.addEventListener("DOMContentLoaded", () => {
     setupSkillsObserver();
     setupContactForm();
     setupTelToasts();
+    setupEmailLinks(); // Gmail-first behavior for all email links
     installHeroFallbacks();
     initContactAutoFit();
 
-    // Safety: if UI isn't ready after a while (edge cases), mark it ready
+    if (isDesktop()) {
+        sections.forEach((sec) => sec.addEventListener("scroll", saveScrollState, { passive: true }));
+    } else {
+        window.addEventListener("scroll", saveScrollState, { passive: true });
+    }
+
     setTimeout(() => {
-        if (!document.documentElement.classList.contains("ui-ready") && !skeletonVisible) {
+        if (!document.documentElement.classList.contains("ui-ready")) {
             markUiReady();
             applyDynamicHeadingClearance();
             maybeStartTypewriter();
@@ -1349,9 +1391,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("load", () => {
     clearTimeout(skeletonTimer);
-
     if (!skeletonVisible) {
-        // Skeleton never appeared: complete indicator and reveal immediately.
         indicatorEl?.classList.remove("waiting");
         playTo(1, 600);
         setTimeout(
@@ -1365,10 +1405,8 @@ window.addEventListener("load", () => {
         initSkillsOnce();
         maybeTriggerSkillsProgress();
     } else {
-        // Skeleton is visible: fade it out and only then reveal UI (handled within hideSkeleton()).
         hideSkeleton();
     }
-
     setTimeout(maybeTriggerSkillsProgress, 200);
     setTimeout(fitContactText, 120);
 });

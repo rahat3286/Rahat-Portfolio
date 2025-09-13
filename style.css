@@ -75,17 +75,13 @@
     --accent: #03cc65;
     --p: 0%;
 
-    /* Skeleton palette (brand-aligned, softer) */
-    --skel-surface: #f6faf8;
-    /* solid base to avoid bleed */
-    --skel-card: #eef5f1;
-    /* card blocks */
-    --skel-shimmer: #e9f3ee;
-    /* base for shimmer stripes */
-    --skel-stripe: rgba(255, 255, 255, 0.72);
+    /* Skeleton palette (refined, professional) */
+    --skel-surface: #f7faf9;
+    --skel-card: #f1f6f3;
+    --skel-shimmer: #e8f2ec;
+    --skel-stripe: rgba(255, 255, 255, 0.9);
     --skel-tint-1: rgba(47, 125, 90, .06);
-    /* subtle brand glow */
-    --skel-tint-2: rgba(47, 125, 90, .05);
+    --skel-tint-2: rgba(59, 143, 115, .05);
 }
 
 /* =========================
@@ -108,17 +104,14 @@ body {
     background: var(--surface-100);
     color: #243b34;
     color-scheme: light;
-    position: relative;
 }
 
-/* media elements */
 img, svg, video, canvas {
     max-width: 100%;
     height: auto;
     display: block;
 }
 
-/* readable paragraph styling */
 .section-body p, .card p, .text-secondary, .text-body-secondary {
     line-height: 1.6;
     text-wrap: pretty;
@@ -127,7 +120,6 @@ img, svg, video, canvas {
     hyphens: auto;
 }
 
-/* a11y helpers */
 .visually-hidden {
     position: absolute !important;
     width: 1px !important;
@@ -147,8 +139,7 @@ img, svg, video, canvas {
     color: #fff;
     padding: .55rem .85rem;
     border-radius: .375rem;
-    z-index: 4001;
-    /* above skeleton */
+    z-index: 2000;
 }
 
 .skip-link:focus {
@@ -162,13 +153,11 @@ img, svg, video, canvas {
     outline-offset: 3px;
 }
 
-/* Hide main UI when skeleton active (prevents bleed-through)
-   Keep top progress bar visible */
+/* Hide main UI when skeleton active (prevents bleed-through) */
 body[aria-busy="true"] {
     overflow: hidden;
 }
 
-/* stricter: hide all primary UI containers while skeleton is up */
 body[aria-busy="true"] #main-content,
 body[aria-busy="true"] #sidebar,
 body[aria-busy="true"] #topNavbar,
@@ -267,6 +256,19 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
 
 .partial-border--hero::before, .partial-border--hero::after {
     border-color: var(--corner-color-hero);
+}
+
+/* Variant size tweaks (requested): hero corners larger, brand corners smaller */
+.partial-border-box.partial-border--hero {
+    --corner-width: 1.20em;
+    /* slightly larger than base */
+    --corner-height: 1.20em;
+}
+
+.partial-border-box.partial-border--brand {
+    --corner-width: 0.90em;
+    /* slightly smaller than base */
+    --corner-height: 0.90em;
 }
 
 /* text entrance */
@@ -469,7 +471,7 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     box-shadow: 0 1px 0 rgba(0, 0, 0, .02);
 }
 
-/* Mobile / tablet default */
+/* Mobile / tablet default (desktop slide-mode consolidated below) */
 #topNavbar {
     display: none;
 }
@@ -485,7 +487,7 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     left: 0;
     right: 0;
     height: 3px;
-    z-index: 4100;
+    z-index: 3100;
     pointer-events: none;
     opacity: 0;
     transition: opacity .2s;
@@ -529,26 +531,22 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     }
 }
 
-/* Full-viewport overlay */
+/* Overlay that covers everything with a light, brand-tinted background */
 #page-skeleton {
     position: fixed;
     inset: 0;
-    z-index: 4000;
-    isolation: isolate;
-    /* prevent underlying blending */
-    background: var(--skel-surface);
+    z-index: 3000;
+    background: linear-gradient(180deg, var(--spruce-050) 0%, var(--skel-surface) 100%);
     opacity: 0;
     visibility: hidden;
     transition: opacity .24s ease, visibility .24s ease;
     pointer-events: none;
-    overflow: hidden;
 }
 
 #page-skeleton::before {
     content: "";
     position: absolute;
     inset: 0;
-    /* soft brand-tinted vignettes */
     background:
         radial-gradient(1200px 480px at 6% -10%, var(--skel-tint-1), transparent 60%),
         radial-gradient(1000px 380px at 98% 112%, var(--skel-tint-2), transparent 62%);
@@ -561,7 +559,7 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     pointer-events: all;
 }
 
-/* Center accessibility chip (spinner removed) */
+/* Center accessibility chip (no spinner icon per request) */
 #page-skeleton .skel-center {
     position: absolute;
     top: clamp(20px, 10vh, 120px);
@@ -577,6 +575,11 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     color: var(--spruce-800);
     font-weight: 800;
     box-shadow: 0 14px 40px rgba(15, 77, 49, .12);
+}
+
+/* Hide the extra spinner inside skeleton banner */
+#page-skeleton .skel-center .skel-spinner {
+    display: none !important;
 }
 
 /* Fixed top/side placeholders */
@@ -615,7 +618,6 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     background: transparent;
 }
 
-/* Hero skeleton */
 .skel-hero {
     display: grid;
     grid-template-columns: 1fr;
@@ -684,14 +686,12 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     box-shadow: 0 10px 26px rgba(16, 90, 62, .08), 0 12px 36px rgba(0, 0, 0, .06);
 }
 
-/* Card grid under hero */
 .skel-grid {
     display: grid;
     gap: 1rem;
     grid-template-columns: 1fr;
 }
 
-/* Shimmer effect (calmer, professional) */
 .skel-shimmer {
     position: relative;
 }
@@ -702,7 +702,7 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     inset: 0;
     background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, var(--skel-stripe) 45%, rgba(255, 255, 255, 0) 100%);
     transform: translateX(-100%);
-    animation: shimmer 1.2s linear infinite;
+    animation: shimmer .9s linear infinite;
     mix-blend-mode: screen;
 }
 
@@ -892,7 +892,6 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     color: #217055;
 }
 
-/* Contrast-bumped amber */
 .chip-amber {
     background: #fff2df;
     border-color: #f0d8b0;
@@ -1051,7 +1050,7 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     background: #fff;
     box-shadow: 0 8px 18px rgba(15, 77, 49, .10), 0 2px 6px rgba(15, 77, 49, .08);
     border: 1px solid rgba(15, 77, 49, .08);
-    transition: transform .18s var(--ease-standard), box-shadow .2s var(--ease-standard), border-color .2s;
+    transition: transform .18s var(--ease-standard), box-shadow .18s var(--ease-standard), border-color .2s;
 }
 
 .hc-item:hover, .hc-item:focus-visible {
@@ -1508,14 +1507,15 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     border-width: 1px;
 }
 
-/* Expander */
+/* Expander — slides up to 80% of the card (card-body is position-relative) */
 .rc-expander {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: auto;
-    max-height: min(80vh, 720px);
+    /* Start closed; when open we set height:80% of the card body (containing block) */
+    height: 0;
+    max-height: none;
     transform: translate3d(0, 100%, 0);
     background: linear-gradient(180deg, var(--expander-bg-1) 0%, var(--expander-bg-2) 55%, #ffffff 100%);
     border-top: 1px solid rgba(0, 0, 0, .08);
@@ -1525,15 +1525,14 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     overflow: hidden;
     will-change: transform, opacity;
     backface-visibility: hidden;
+    z-index: 4;
 }
 
 .rc-expander[aria-hidden="false"] {
-    animation: rcSlideIn .52s var(--ease-standard) forwards;
+    height: 80%;
 }
 
-.rc-expander[aria-hidden="true"] {
-    animation: rcSlideOut .4s var(--ease-standard) forwards;
-}
+/* <-- key requirement */
 
 .rc-expander-inner {
     padding: clamp(1.75rem, 4cqi, 2.25rem) clamp(1.25rem, 3.5cqi, 1.75rem) .95rem clamp(1.1rem, 3.2cqi, 1.5rem);
@@ -1575,6 +1574,8 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     padding-inline-end: clamp(.75rem, 2.6cqi, 1rem);
     scrollbar-gutter: stable;
     color: #2c5b4c;
+    overscroll-behavior: contain;
+    /* contain scroll to the panel */
 }
 
 .rc-expander-body p {
@@ -1588,6 +1589,7 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     justify-content: flex-end;
 }
 
+/* Slide animations (unchanged) */
 @keyframes rcSlideIn {
     from {
         transform: translate3d(0, 100%, 0);
@@ -1606,6 +1608,14 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     to {
         transform: translate3d(0, 100%, 0);
     }
+}
+
+.rc-expander[aria-hidden="false"] {
+    animation: rcSlideIn .52s var(--ease-standard) forwards;
+}
+
+.rc-expander[aria-hidden="true"] {
+    animation: rcSlideOut .4s var(--ease-standard) forwards;
 }
 
 /* =========================
@@ -2082,27 +2092,61 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
 }
 
 /* =========================
-   Helper tweaks
+   Reduced motion (scoped)
 ========================= */
-.hero-h1, .hero-h2 {
-    overflow: hidden;
-    text-overflow: ellipsis;
+@media (prefers-reduced-motion: reduce) {
+
+    .skel-shimmer::after, .availability-badge .dot, .type-caret, .animated-text,
+    #reload-indicator.waiting .fill, .rc-expander[aria-hidden="false"], .rc-expander[aria-hidden="true"],
+    .toast-msg, .toast-msg.hide {
+        animation: none !important;
+    }
+
+    .research-card, .skills-card, .back-to-top, .hamburger span, .hero-cta .btn, .hc-item, #rightSlider {
+        transition: none !important;
+    }
 }
 
-.section-heading .eyebrow-badge {
-    background: var(--spruce-100);
-    color: var(--spruce-800);
-    border-color: var(--spruce-200);
-}
+/* Fallback for container query units */
+@supports not (width: 1cqi) {
+    .cv-title {
+        font-size: clamp(1.05rem, 2.8vw, 1.25rem);
+    }
 
-.section-title {
-    color: var(--title-color);
-}
+    .icon-badge {
+        font-size: clamp(.9rem, 3.2vw, 1.1rem);
+        width: clamp(32px, 6vw, 42px);
+        height: clamp(32px, 6vw, 42px);
+    }
 
-.no-js .animated-text {
-    opacity: 1 !important;
-    transform: none !important;
-    animation: none !important;
+    .contact-card .card-title {
+        font-size: clamp(1rem, 5.2vw, 1.4rem);
+    }
+
+    .contact-card .form-label {
+        font-size: clamp(.88rem, 3.3vw, 1rem);
+    }
+
+    .contact-card .form-control {
+        padding-block: clamp(.52rem, 2.6vw, .8rem);
+        font-size: clamp(.9rem, 3.6vw, 1.05rem);
+    }
+
+    .contact-card .form-control::placeholder {
+        font-size: clamp(.78rem, 3vw, .98rem);
+    }
+
+    #contact .btn {
+        font-size: clamp(.92rem, 3.6vw, 1.05rem);
+    }
+
+    #contact .btn i {
+        font-size: clamp(1rem, 3.2vw, 1.15rem);
+    }
+
+    .needs-validation .invalid-feedback {
+        font-size: clamp(.78rem, 2.8vw, .9rem);
+    }
 }
 
 /* =========================
@@ -2122,8 +2166,6 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
 
 /* ≥992px (desktop / slide-mode) */
 @media (min-width: 992px) {
-
-    /* Layout & slide mode */
     .js #main-content {
         padding: 0;
         overflow: hidden;
@@ -2237,8 +2279,6 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
 
 /* ≤991.98px (tablet & mobile) */
 @media (max-width: 991.98px) {
-
-    /* Hide desktop sidebar, show top bar */
     #sidebar {
         display: none;
     }
@@ -2265,7 +2305,6 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
         font-size: clamp(1.1rem, 5.5vw, 1.35rem);
     }
 
-    /* Main content & sections in document flow */
     #main-content {
         margin-left: 0;
         margin-top: var(--mob-nav-h);
@@ -2287,7 +2326,6 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
         gap: clamp(12px, 3vw, 20px);
     }
 
-    /* Hero layout tweaks */
     .availability-badge {
         margin-bottom: .5rem;
     }
@@ -2304,14 +2342,11 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
 
 /* ≤575.98px (small phones) */
 @media (max-width: 575.98px) {
-
-    /* Body copy readability */
     .section-body p, .card p, .text-secondary, .text-body-secondary {
         text-align: left;
         text-justify: auto;
     }
 
-    /* Hero CTAs and image sizing */
     .hero-cta .btn {
         width: 100%;
     }
@@ -2320,74 +2355,8 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
         max-width: clamp(240px, 50vw, 320px);
     }
 
-    /* Contact card padding */
     .contact-card .card-body {
         padding: 1rem !important;
         gap: .75rem;
-    }
-}
-
-/* Reduced motion — centralized */
-@media (prefers-reduced-motion: reduce) {
-    html {
-        scroll-behavior: auto !important;
-    }
-
-    .skel-shimmer::after,
-    .availability-badge .dot,
-    .type-caret,
-    .animated-text,
-    #reload-indicator.waiting .fill,
-    .rc-expander[aria-hidden="false"],
-    .rc-expander[aria-hidden="true"],
-    .toast-msg, .toast-msg.hide {
-        animation: none !important;
-    }
-
-    .research-card, .skills-card, .back-to-top, .hamburger span,
-    .hero-cta .btn, .hc-item, #rightSlider {
-        transition: none !important;
-    }
-}
-
-/* Fallback for container query units */
-@supports not (width: 1cqi) {
-    .cv-title {
-        font-size: clamp(1.05rem, 2.8vw, 1.25rem);
-    }
-
-    .icon-badge {
-        font-size: clamp(.9rem, 3.2vw, 1.1rem);
-        width: clamp(32px, 6vw, 42px);
-        height: clamp(32px, 6vw, 42px);
-    }
-
-    .contact-card .card-title {
-        font-size: clamp(1rem, 5.2vw, 1.4rem);
-    }
-
-    .contact-card .form-label {
-        font-size: clamp(.88rem, 3.3vw, 1rem);
-    }
-
-    .contact-card .form-control {
-        padding-block: clamp(.52rem, 2.6vw, .8rem);
-        font-size: clamp(.9rem, 3.6vw, 1.05rem);
-    }
-
-    .contact-card .form-control::placeholder {
-        font-size: clamp(.78rem, 3vw, .98rem);
-    }
-
-    #contact .btn {
-        font-size: clamp(.92rem, 3.6vw, 1.05rem);
-    }
-
-    #contact .btn i {
-        font-size: clamp(1rem, 3.2vw, 1.15rem);
-    }
-
-    .needs-validation .invalid-feedback {
-        font-size: clamp(.78rem, 2.8vw, .9rem);
     }
 }
