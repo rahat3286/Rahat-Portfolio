@@ -1,158 +1,139 @@
 "use strict";
 
-/* ========= CONFIG / UTILS ========= */
-const BREAKPOINT = 991.98;
-const isDesktop = () => window.innerWidth > BREAKPOINT;
-const prefersReducedMotion = () =>
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-
+/* =========================
+   Small utilities
+========================= */
 const $ = (s, sc = document) => sc.querySelector(s);
 const $$ = (s, sc = document) => Array.from(sc.querySelectorAll(s));
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const isDesktop = () => window.innerWidth >= 992;
+const reducedMotion = () =>
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 const FOCUSABLE = `
 a[href]:not([tabindex="-1"]):not([inert]),
 area[href]:not([tabindex="-1"]):not([inert]),
 button:not([disabled]):not([tabindex="-1"]):not([inert]),
-input:not([disabled"]):not([type="hidden"]):not([tabindex="-1"]):not([inert]),
+input:not([disabled]):not([type="hidden"]):not([tabindex="-1"]):not([inert]),
 select:not([disabled]):not([tabindex="-1"]):not([inert]),
 textarea:not([disabled]):not([tabindex="-1"]):not([inert]),
 [contenteditable="true"]:not([tabindex="-1"]):not([inert]),
 [tabindex]:not([tabindex="-1"]):not([inert])
 `.trim();
 
-/** Get the destination target id from various clickable elements. */
-function getTargetFrom(el) {
+const getTargetFrom = (el) => {
     if (!el) return "";
-    const ds =
-        el.dataset?.target ||
-        (el.getAttribute ? el.getAttribute("data-scroll-to") : "");
+    const ds = el.dataset?.target || el.getAttribute?.("data-scroll-to");
     if (ds) return ds;
-    const href = el.getAttribute ? el.getAttribute("href") : "";
-    if (!href) return "";
+    const href = el.getAttribute?.("href") || "";
     if (href.startsWith("#")) return href.slice(1);
     try {
         const u = new URL(href, location.href);
         return u.hash ? u.hash.slice(1) : "";
-    } catch {
-        return "";
-    }
-}
+    } catch { return ""; }
+};
 
-/* ========= DOM HOOKS ========= */
+/* =========================
+   DOM references
+========================= */
 const sidebar = $("#sidebar");
 const sidebarLinks = $$("#sidebar .nav-link");
-const sections = $$("#main-content .section");
 const mainContent = $("#main-content");
+const sections = $$("#main-content .section");
+const topNavbar = $("#topNavbar");
 const rightSlider = $("#rightSlider");
-const sliderItemsWrap = $("#sliderItems");
+const sliderItemsBox = $("#sliderItems");
 const sliderItems = $$("#rightSlider .slider-item");
 const hamburger = $("#hamburger");
+const backToTopBtn = $("#backToTop");
 const skipLink = $("#skipLink");
-const indicatorEl = $("#reload-indicator");
-const skeletonEl = $("#page-skeleton");
-const toastStack = $("#toast-stack");
-const heroImg = $(".hero-img");
 const brandTop = $("#brandTop");
 const typewriterEl = $("#typewriter");
-const backToTopBtn = $("#backToTop");
+const toastStack = $("#toast-stack");
+const indicatorEl = $("#reload-indicator");
+const skeletonEl = $("#page-skeleton");
+const heroImg = $(".hero-img");
 
-/* ========= STATE ========= */
-const MENU_STORAGE_KEY = "rightSliderOpen";
-const SCROLL_KEY = "scrollStateV7";
-
+/* =========================
+   State
+========================= */
 let currentId = null;
-let visualsReady = false;
 let wasDesktop = null;
+let visualsReady = false;
 let navLock = false;
-let releaseFocusTrap = null;
+let ioSections = null;
+let releaseTrap = null;
 let lastFocusBeforeMenu = null;
-let ioSections = null; // mobile section observer
 const sectionScroll = new Map();
 
-/* ========= INERT POLYFILL ========= */
+const STORAGE_MENU = "rightSliderOpenV2";
+const STORAGE_SCROLL = "scrollStateV8";
+
+/* =========================
+   Inert toggle (with fallback)
+========================= */
 const inertSupported = "inert" in HTMLElement.prototype;
-/** Disable/restore focus + interaction within a subtree. */
-function setInert(el, makeInert) {
-    if (!el) return;
+function setInert(root, flag) {
+    if (!root) return;
     if (inertSupported) {
-        if (makeInert) el.setAttribute("inert", "");
-        else el.removeAttribute("inert");
+        flag ? root.setAttribute("inert", "") : root.removeAttribute("inert");
         return;
     }
-    // Fallback: block pointer events (CSS) + remove focusability
-    if (makeInert) {
-        el.setAttribute("inert", "");
-        const focusables = $$(FOCUSABLE, el);
-        focusables.forEach((f) => {
-            if (!f.hasAttribute("data-prev-tabindex")) {
-                if (f.hasAttribute("tabindex")) {
-                    f.setAttribute("data-prev-tabindex", f.getAttribute("tabindex"));
-                } else {
-                    f.setAttribute("data-prev-tabindex", "none");
-                }
+    if (flag) {
+        root.setAttribute("inert", "");
+        $$(FOCUSABLE, root).forEach(el => {
+            if (!el.hasAttribute("data-prev-tabindex")) {
+                el.setAttribute("data-prev-tabindex", el.hasAttribute("tabindex") ? el.getAttribute("tabindex") : "none");
             }
-            f.setAttribute("tabindex", "-1");
-            f.setAttribute("aria-hidden", "true");
+            el.setAttribute("tabindex", "-1");
+            el.setAttribute("aria-hidden", "true");
         });
     } else {
-        const focusables = $$(FOCUSABLE, el);
-        focusables.forEach((f) => {
-            const prev = f.getAttribute("data-prev-tabindex");
+        $$(FOCUSABLE, root).forEach(el => {
+            const prev = el.getAttribute("data-prev-tabindex");
             if (prev !== null) {
-                if (prev === "none") f.removeAttribute("tabindex");
-                else f.setAttribute("tabindex", prev);
-                f.removeAttribute("data-prev-tabindex");
+                prev === "none" ? el.removeAttribute("tabindex") : el.setAttribute("tabindex", prev);
+                el.removeAttribute("data-prev-tabindex");
             }
-            if (f.getAttribute("aria-hidden") === "true") {
-                f.removeAttribute("aria-hidden");
-            }
+            if (el.getAttribute("aria-hidden") === "true") el.removeAttribute("aria-hidden");
         });
-        el.removeAttribute("inert");
+        root.removeAttribute("inert");
     }
 }
 
-/* ========= PROGRESS BAR / SKELETON ========= */
-function setIndicatorProgress(p) {
-    indicatorEl?.style.setProperty("--progress", String(p));
-}
-function playTo(target, ms = 900) {
+/* =========================
+   Top progress + skeleton
+========================= */
+function setIndicatorProgress(pct) { indicatorEl?.style.setProperty("--progress", String(pct)); }
+function playIndicator(to = 1, dur = 900) {
     if (!indicatorEl) return;
     indicatorEl.classList.add("visible");
+    indicatorEl.style.setProperty("--ri-duration", reducedMotion() ? "1ms" : `${dur}ms`);
     const fill = indicatorEl.querySelector(".fill");
     fill?.classList.remove("animate");
-    indicatorEl.style.setProperty(
-        "--ri-duration",
-        prefersReducedMotion() ? "1ms" : `${ms}ms`
-    );
-    requestAnimationFrame(() => {
-        fill?.classList.add("animate");
-        setIndicatorProgress(target);
-    });
+    requestAnimationFrame(() => { fill?.classList.add("animate"); setIndicatorProgress(to); });
 }
-function startIndicatorHold() {
+function holdIndicator() {
     if (!indicatorEl) return;
-    playTo(0.7, 700);
+    playIndicator(.7, 700);
     indicatorEl.classList.add("waiting");
 }
 function completeIndicator() {
     if (!indicatorEl) return;
     indicatorEl.classList.remove("waiting");
-    playTo(1, 600);
-    const done = () => indicatorEl.classList.remove("visible");
-    prefersReducedMotion() ? done() : setTimeout(done, 600);
+    playIndicator(1, 600);
+    const hide = () => indicatorEl.classList.remove("visible");
+    reducedMotion() ? hide() : setTimeout(hide, 620);
 }
 
-let skeletonTimer = 0;
-let skeletonVisible = false;
-
+let skelTimer = 0, skelVisible = false;
 function showSkeleton() {
     if (!skeletonEl) return;
     skeletonEl.hidden = false;
     skeletonEl.dataset.visible = "true";
-    document.body.setAttribute("aria-busy", "true"); // CSS hides UI to prevent bleed-through
-    skeletonVisible = true;
-    startIndicatorHold();
+    document.body.setAttribute("aria-busy", "true");
+    skelVisible = true;
+    holdIndicator();
 }
 function markUiReady() {
     document.documentElement.classList.add("ui-ready");
@@ -162,215 +143,142 @@ function hideSkeleton() {
     if (!skeletonEl) return;
     skeletonEl.dataset.visible = "false";
     document.body.removeAttribute("aria-busy");
-    skeletonVisible = false;
+    skelVisible = false;
     completeIndicator();
     setTimeout(() => {
         skeletonEl.hidden = true;
-        markUiReady(); // ensure animated brand/hero end state sticks
-        applyDynamicHeadingClearance();
-        restoreSavedScrollIfAny();
+        markUiReady();
+        applyHeadingClearance();
+        restoreSavedScroll();
         maybeStartTypewriter();
-        initSkillsOnce();
-        maybeTriggerSkillsProgress();
-    }, prefersReducedMotion() ? 0 : 120);
+        initSkills();
+        maybeAnimateSkills();
+        applyResearchCardPatches();
+    }, reducedMotion() ? 0 : 120);
 }
 
-/* ========= NAV / SECTIONS ========= */
-function withNavLock(ms = 500) {
-    navLock = true;
-    setTimeout(() => (navLock = false), prefersReducedMotion() ? 0 : ms);
-}
-function focusSection(target) {
-    target?.focus?.({ preventScroll: true });
-}
-function getActiveSectionEl() {
-    return sections.find((s) => s.dataset.active === "true") || null;
-}
+/* =========================
+   Sections router
+========================= */
+function withNavLock(ms = 450) { navLock = true; setTimeout(() => navLock = false, reducedMotion() ? 0 : ms); }
+function activeSectionEl() { return sections.find(s => s.dataset.active === "true") || null; }
 
 function saveActiveSectionScroll() {
     if (!isDesktop()) return;
-    const active = getActiveSectionEl();
-    if (active) sectionScroll.set(active.id, active.scrollTop);
+    const a = activeSectionEl();
+    if (a) sectionScroll.set(a.id, a.scrollTop);
 }
 function restoreSectionScroll(target) {
     if (!isDesktop() || !target) return;
     target.scrollTop = sectionScroll.get(target.id) ?? 0;
 }
+function syncBrandTop() { if (brandTop) brandTop.textContent = "Rahat"; }
 
-function applyDynamicHeadingClearance() {
-    sections.forEach((section) => {
-        const heading = $(".section-heading", section);
-        const rect = heading?.getBoundingClientRect?.();
-        const h = rect?.height || heading?.offsetHeight || 0;
-        section.style.setProperty("--dynamic-clear", `${Math.ceil(h + 24)}px`);
+function applyHeadingClearance() {
+    sections.forEach(sec => {
+        const hd = $(".section-heading", sec);
+        const h = hd?.getBoundingClientRect?.().height || hd?.offsetHeight || 0;
+        sec.style.setProperty("--dynamic-clear", `${Math.ceil(h + 24)}px`);
     });
 }
 
-function syncActiveUI(targetId) {
-    if (!document.getElementById(targetId)) return;
-    sidebarLinks.forEach((a) => {
-        const active = getTargetFrom(a) === targetId;
+function syncNavUI(id) {
+    sidebarLinks.forEach(a => {
+        const active = getTargetFrom(a) === id;
         a.dataset.active = active ? "true" : "false";
-        active
-            ? a.setAttribute("aria-current", "page")
-            : a.removeAttribute("aria-current");
+        active ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
     });
-    sliderItems.forEach((btn) => {
-        const active = getTargetFrom(btn) === targetId;
-        btn.dataset.active = active ? "true" : "false";
-        active
-            ? btn.setAttribute("aria-current", "page")
-            : btn.removeAttribute("aria-current");
+    sliderItems.forEach(b => {
+        const active = getTargetFrom(b) === id;
+        b.dataset.active = active ? "true" : "false";
+        active ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current");
     });
 }
 
-/** Safe section router; works for both desktop slide-mode and mobile document flow. */
-function showSection(targetId, pushHash = true, { preserveScroll = false } = {}) {
-    const target = document.getElementById(targetId);
+function focusSection(sec) { sec?.focus?.({ preventScroll: true }); }
+
+/* butter-smooth slide transitions on desktop, native smooth scroll on mobile */
+function showSection(id, pushHash = true, { preserveScroll = false } = {}) {
+    const target = document.getElementById(id);
     if (!target) return;
 
-    if (currentId === targetId) {
+    if (currentId === id) {
         if (isDesktop()) {
             if (!preserveScroll) restoreSectionScroll(target);
             focusSection(target);
-            applyDynamicHeadingClearance();
+            applyHeadingClearance();
         } else if (!preserveScroll) {
-            target.scrollIntoView({
-                behavior: prefersReducedMotion() ? "auto" : "smooth",
-                block: "start",
-            });
+            target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
             requestAnimationFrame(() => focusSection(target));
         }
-        syncActiveUI(targetId);
-        if (pushHash) history.replaceState(null, "", `#${targetId}`);
+        syncNavUI(id);
+        pushHash && history.replaceState(null, "", `#${id}`);
         return;
     }
 
-    const lockMs = prefersReducedMotion() ? 0 : isDesktop() ? 500 : 800;
-    withNavLock(lockMs);
-
+    withNavLock(isDesktop() ? 480 : 720);
     if (isDesktop()) {
         saveActiveSectionScroll();
-        sections.forEach((sec) => (sec.dataset.active = sec === target ? "true" : "false"));
+        sections.forEach(s => s.dataset.active = (s === target ? "true" : "false"));
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
         requestAnimationFrame(() => {
             if (!preserveScroll) restoreSectionScroll(target);
             focusSection(target);
-            applyDynamicHeadingClearance();
+            applyHeadingClearance();
         });
     } else if (!preserveScroll) {
-        target.scrollIntoView({
-            behavior: prefersReducedMotion() ? "auto" : "smooth",
-            block: "start",
-        });
+        target.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
         requestAnimationFrame(() => focusSection(target));
     }
 
-    currentId = targetId;
-    syncActiveUI(targetId);
-    if (pushHash) history.replaceState(null, "", `#${targetId}`);
-    if (targetId === "skills") setTimeout(maybeTriggerSkillsProgress, 60);
+    currentId = id;
+    syncNavUI(id);
+    pushHash && history.replaceState(null, "", `#${id}`);
+    if (id === "skills") setTimeout(maybeAnimateSkills, 40);
 }
 
-function setupIntersectionObserver() {
-    ioSections?.disconnect?.();
-    ioSections = null;
+/* Mobile: observe which section is visible to sync nav */
+function setupSectionObserver() {
+    ioSections?.disconnect?.(); ioSections = null;
     if (isDesktop()) return;
+    if (!("IntersectionObserver" in window)) return;
 
-    if ("IntersectionObserver" in window) {
-        ioSections = new IntersectionObserver(
-            (entries) => {
-                if (navLock) return;
-                const visible = entries.filter((e) => e.isIntersecting);
-                if (!visible.length) return;
-                visible.sort((a, b) => {
-                    const ta = a.boundingClientRect.top;
-                    const tb = b.boundingClientRect.top;
-                    if (Math.abs(ta - tb) > 8) return ta - tb;
-                    return b.intersectionRatio - a.intersectionRatio;
-                });
-                const id = visible[0].target.id;
-                if (!id || id === currentId) return;
-                currentId = id;
-                syncActiveUI(id);
-                history.replaceState(null, "", `#${id}`);
-                saveScrollState();
-                if (id === "skills") maybeTriggerSkillsProgress();
-            },
-            { root: null, rootMargin: "0px 0px -40% 0px", threshold: [0.2, 0.5, 0.75] }
-        );
-        sections.forEach((s) => ioSections.observe(s));
-    } else {
-        const onScroll = () => {
-            if (navLock) return;
-            let best = { id: null, top: Infinity };
-            sections.forEach((sec) => {
-                const t = sec.getBoundingClientRect().top;
-                if (t >= 0 && t < best.top) best = { id: sec.id, top: t };
-            });
-            if (best.id && best.id !== currentId) {
-                currentId = best.id;
-                syncActiveUI(best.id);
-                history.replaceState(null, "", `#${best.id}`);
-                saveScrollState();
-                if (best.id === "skills") maybeTriggerSkillsProgress();
-            }
-        };
-        window.addEventListener("scroll", onScroll, { passive: true });
-    }
-}
-
-function initMode({ initialId = null, preserveScroll = false } = {}) {
-    const startId =
-        (location.hash && document.getElementById(location.hash.slice(1)) && location.hash.slice(1)) ||
-        initialId ||
-        sections[0]?.id ||
-        "home";
-
-    if (isDesktop()) {
-        sections.forEach((sec) => (sec.dataset.active = "false"));
-        const target = document.getElementById(startId);
-        if (target) {
-            target.dataset.active = "true";
-            if (!preserveScroll) restoreSectionScroll(target);
+    ioSections = new IntersectionObserver((entries) => {
+        if (navLock) return;
+        const vis = entries.filter(e => e.isIntersecting);
+        if (!vis.length) return;
+        vis.sort((a, b) => {
+            const ta = a.boundingClientRect.top, tb = b.boundingClientRect.top;
+            if (Math.abs(ta - tb) > 8) return ta - tb;
+            return b.intersectionRatio - a.intersectionRatio;
+        });
+        const id = vis[0].target.id;
+        if (id && id !== currentId) {
+            currentId = id;
+            syncNavUI(id);
+            history.replaceState(null, "", `#${id}`);
+            saveScrollState();
+            if (id === "skills") maybeAnimateSkills();
         }
-        window.scrollTo(0, 0);
-    } else if (!preserveScroll) {
-        document.getElementById(startId)?.scrollIntoView({ block: "start" });
-    }
+    }, { root: null, rootMargin: "0px 0px -40% 0px", threshold: [0.2, 0.5, 0.75] });
 
-    currentId = startId;
-    syncActiveUI(startId);
-    setupIntersectionObserver();
-    applyDynamicHeadingClearance();
-
-    if (isDesktop() && rightSlider?.dataset.open === "true") {
-        setMenuOpen(false, { animate: false, focus: false, persist: false });
-    }
-    syncBrandTop();
+    sections.forEach(s => ioSections.observe(s));
 }
 
-/* ========= RIGHT SLIDER (Mobile) ========= */
+/* =========================
+   Mobile right slider (menu)
+========================= */
 function trapFocus(container) {
     const onKeydown = (e) => {
-        if (e.key === "Escape") {
-            setMenuOpen(false);
-            return;
-        }
+        if (e.key === "Escape") { setMenuOpen(false); return; }
         if (e.key !== "Tab") return;
-        const focusables = $$(FOCUSABLE, container).filter((el) => {
-            const rect = el.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
+        const items = $$(FOCUSABLE, container).filter(el => {
+            const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0;
         });
-        if (!focusables.length) return;
-        const [first, last] = [focusables[0], focusables[focusables.length - 1]];
-        if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-        }
+        if (!items.length) return;
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
     container.addEventListener("keydown", onKeydown);
     return () => container.removeEventListener("keydown", onKeydown);
@@ -391,371 +299,266 @@ function setMenuOpen(open, { animate = true, focus = true, persist = true } = {}
 
     hamburger.dataset.active = open ? "true" : "false";
     hamburger.setAttribute("aria-expanded", open ? "true" : "false");
-
     mainContent.classList.toggle("blur", open);
 
     if (open) {
-        releaseFocusTrap = trapFocus(rightSlider);
-        if (focus) ($(".slider-item", rightSlider) || rightSlider).focus?.({ preventScroll: true });
-        if (persist) try { sessionStorage.setItem(MENU_STORAGE_KEY, "1"); } catch { /* ignore */ }
+        releaseTrap = trapFocus(rightSlider);
+        focus && ($(".slider-item", rightSlider) || rightSlider).focus?.({ preventScroll: true });
+        if (persist) try { sessionStorage.setItem(STORAGE_MENU, "1"); } catch { }
     } else {
-        if (typeof releaseFocusTrap === "function") releaseFocusTrap();
-        releaseFocusTrap = null;
-        if (persist) try { sessionStorage.setItem(MENU_STORAGE_KEY, "0"); } catch { /* ignore */ }
+        if (typeof releaseTrap === "function") releaseTrap();
+        releaseTrap = null;
+        if (persist) try { sessionStorage.setItem(STORAGE_MENU, "0"); } catch { }
         (lastFocusBeforeMenu || hamburger).focus?.({ preventScroll: true });
     }
 
     if (!animate) requestAnimationFrame(() => rightSlider.classList.remove("no-anim"));
 }
 
-/* ========= TOASTS ========= */
-function showToast({ type = "success", title = "", message = "" } = {}) {
-    if (!toastStack) return null;
-    const toast = document.createElement("div");
-    toast.className = `toast-msg ${type}`;
-    toast.setAttribute("role", "status");
-    toast.setAttribute("aria-live", "polite");
-    toast.innerHTML = `
-    <div class="icon">${type === "success" ? "✅" : type === "danger" ? "❗" : type === "warning" ? "⚠️" : "ℹ️"}</div>
-    <div class="content"><strong>${title || (type === "success" ? "Success" : "Notice")}:</strong> ${message}</div>
+/* =========================
+   Toasts
+========================= */
+function toast({ type = "success", title = "", message = "" } = {}) {
+    if (!toastStack) return;
+    const t = document.createElement("div");
+    t.className = `toast-msg ${type}`;
+    t.setAttribute("role", "status");
+    t.setAttribute("aria-live", "polite");
+    const icon = type === "success" ? "✅" : type === "danger" ? "❗" : type === "warning" ? "⚠️" : "ℹ️";
+    t.innerHTML = `
+    <div class="icon">${icon}</div>
+    <div class="content"><strong>${title || "Notice"}:</strong> ${message}</div>
     <button class="close" type="button" aria-label="Close">&times;</button>
   `.trim();
-    const remove = () => {
-        toast.classList.add("hide");
-        setTimeout(() => toast.remove(), prefersReducedMotion() ? 0 : 220);
-    };
-    toast.querySelector(".close")?.addEventListener("click", remove);
+    const remove = () => { t.classList.add("hide"); setTimeout(() => t.remove(), reducedMotion() ? 0 : 240); };
+    t.querySelector(".close")?.addEventListener("click", remove);
     const ttl = type === "danger" ? 7000 : 5200;
     const timer = setTimeout(remove, ttl);
-    toast.addEventListener("mouseenter", () => clearTimeout(timer), { passive: true });
-    toastStack.appendChild(toast);
-    return toast;
+    t.addEventListener("mouseenter", () => clearTimeout(timer), { passive: true });
+    toastStack.appendChild(t);
+    return t;
 }
 
-/* ========= RESEARCH CARDS ========= */
-const RC_DUR_OPEN = 520;
-const RC_DUR_CLOSE = 400;
-
-function setExpanderVisibility(expander, open) {
+/* =========================
+   Research cards (UX fix)
+========================= */
+function setExpanderVisible(expander, open) {
     if (!expander) return;
     if (open) {
         expander.hidden = false;
-        expander.setAttribute("aria-hidden", "false"); // CSS anim + height:80% kicks in
+        expander.setAttribute("aria-hidden", "false");
         setInert(expander, false);
-        void expander.offsetWidth; // force recalc
-        return;
+        void expander.offsetWidth;
+    } else {
+        expander.setAttribute("aria-hidden", "true");
+        setInert(expander, true);
+        const done = () => { expander.hidden = true; expander.removeEventListener("animationend", done); };
+        expander.addEventListener("animationend", done, { once: true });
+        setTimeout(done, reducedMotion() ? 0 : 480);
     }
-    expander.setAttribute("aria-hidden", "true");
-    setInert(expander, true);
-    const done = () => {
-        expander.hidden = true;
-        expander.removeEventListener("animationend", done);
-    };
-    expander.addEventListener("animationend", done, { once: true });
-    setTimeout(done, prefersReducedMotion() ? 0 : RC_DUR_CLOSE + 60); // safety
 }
-
-function closeAnyOpenResearch(exceptArticle = null) {
-    $$(".research-card[data-open='true']").forEach((art) => {
-        if (exceptArticle && art === exceptArticle) return;
+function closeOpenResearch(except = null) {
+    $$(".research-card[data-open='true']").forEach(art => {
+        if (except && art === except) return;
         art.dataset.open = "false";
         $(".rc-toggle[aria-expanded]", art)?.setAttribute("aria-expanded", "false");
-        setExpanderVisibility($(".rc-expander", art), false);
+        setExpanderVisible($(".rc-expander", art), false);
     });
 }
-
-// legacy hook kept for compatibility; CSS now drives 80% height
-function adjustOpenResearchExpander() {
-    // No manual sizing needed; .rc-expander[aria-hidden="false"] uses height:80% of card.
-}
-
 function setupResearchCards() {
-    document.addEventListener(
-        "click",
-        (e) => {
-            const btn = e.target.closest?.(".rc-toggle");
-            if (btn) {
-                e.preventDefault();
-                const targetId = btn.dataset.target;
-                const expander = targetId ? document.getElementById(targetId) : null;
-                if (!expander) return;
-                const article = expander.closest(".research-card");
-                const isOpen = article?.dataset.open === "true";
-                if (isOpen) {
-                    article.dataset.open = "false";
-                    btn.setAttribute("aria-expanded", "false");
-                    setExpanderVisibility(expander, false);
-                } else {
-                    closeAnyOpenResearch(article);
-                    article.dataset.open = "true";
-                    btn.setAttribute("aria-expanded", "true");
-                    setExpanderVisibility(expander, true);
-                    setTimeout(() => $(".rc-close", expander)?.focus({ preventScroll: true }), 10);
-                }
-                return;
-            }
-            // FIX: only close when clicking completely outside the open research card
-            const openArticle = $(".research-card[data-open='true']");
-            if (openArticle && !openArticle.contains(e.target)) {
-                closeAnyOpenResearch();
-            }
-        },
-        { passive: false }
-    );
-
-    document.addEventListener(
-        "click",
-        (e) => {
-            const closeBtn = e.target.closest?.(".research-card .rc-close");
-            if (!closeBtn) return;
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest?.(".rc-toggle");
+        if (btn) {
             e.preventDefault();
-            const article = closeBtn.closest(".research-card");
-            const expander = $(".rc-expander", article);
-            article.dataset.open = "false";
-            $(".rc-toggle", article)?.setAttribute("aria-expanded", "false");
-            setExpanderVisibility(expander, false);
-            $(".rc-toggle", article)?.focus?.({ preventScroll: true });
-        },
-        { passive: false }
-    );
-
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeAnyOpenResearch();
-    });
-}
-
-/* ========= CORE VALUES (mobile-only popovers) ========= */
-function setupCoreValues() {
-    const items = $$(".cv-reveal");
-    if (!items.length) return;
-    const isLgUp = () => isDesktop();
-    const enforceSingleOpen = () => {
-        if (isLgUp()) return;
-        const opened = items.filter((d) => d.open);
-        if (opened.length > 1) opened.slice(0, -1).forEach((d) => (d.open = false));
-    };
-    items.forEach((d) => {
-        const summary = $(".cv-info-btn", d);
-        if (!summary) return;
-        const syncAria = () => summary.setAttribute("aria-expanded", d.open ? "true" : "false");
-        d.addEventListener("toggle", () => {
-            if (isLgUp()) d.open = false;
-            else enforceSingleOpen();
-            syncAria();
-        });
-        summary.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") {
-                d.open = false;
-                syncAria();
-                summary.blur();
+            const id = btn.dataset.target;
+            const exp = id ? document.getElementById(id) : null;
+            if (!exp) return;
+            const card = exp.closest(".research-card");
+            const isOpen = card?.dataset.open === "true";
+            if (isOpen) {
+                card.dataset.open = "false";
+                btn.setAttribute("aria-expanded", "false");
+                setExpanderVisible(exp, false);
+            } else {
+                closeOpenResearch(card);
+                card.dataset.open = "true";
+                btn.setAttribute("aria-expanded", "true");
+                setExpanderVisible(exp, true);
+                setTimeout(() => $(".rc-close", exp)?.focus({ preventScroll: true }), 10);
             }
-        });
-        syncAria();
-    });
-    document.addEventListener(
-        "click",
-        (e) => {
-            if (isDesktop()) return;
-            const anyOpen = items.find((d) => d.open);
-            if (anyOpen && !anyOpen.contains(e.target)) anyOpen.open = false;
-        },
-        { passive: true }
-    );
+            return;
+        }
+        // Close only when click is completely outside any open card (UX bug fix)
+        const open = $(".research-card[data-open='true']");
+        if (open && !open.contains(e.target)) closeOpenResearch();
+    }, { passive: false });
+
+    document.addEventListener("click", (e) => {
+        const x = e.target.closest?.(".research-card .rc-close");
+        if (!x) return;
+        e.preventDefault();
+        const card = x.closest(".research-card");
+        const exp = $(".rc-expander", card);
+        card.dataset.open = "false";
+        $(".rc-toggle", card)?.setAttribute("aria-expanded", "false");
+        setExpanderVisible(exp, false);
+        $(".rc-toggle", card)?.focus?.({ preventScroll: true });
+    }, { passive: false });
+
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeOpenResearch(); });
 }
 
-/* ========= SKILLS PROGRESS ========= */
-const skills = { section: null, bars: [], inited: false, animated: false, io: null };
+/* ensure chips row and badges are stable / centered */
+function applyResearchCardPatches() {
+    ["rc1", "rc2"].forEach(id => {
+        const card = document.getElementById(id);
+        if (!card) return;
+        const points = $(".rc-points", card);
+        if (points) points.classList.add("d-flex", "flex-wrap", "justify-content-center", "gap-2");
+        const exp = $(`#${id}-details`);
+        const body = exp ? $(".rc-expander-body", exp) : null;
+        if (body) $$(".d-flex.flex-wrap.gap-2", body).forEach(r => { if ($$(".chip", r).length) r.remove(); });
+    });
 
-function initSkillsOnce() {
-    if (skills.inited || prefersReducedMotion()) return;
-    skills.section = document.getElementById("skills");
-    if (!skills.section) return;
-    const containers = $$(".progress[role='progressbar']", skills.section);
+    // Normalize RC2 wording + timeframe once
+    const rc2 = $("#rc2"); if (rc2) {
+        const badge = $(".badge-soft-success", rc2); if (badge) badge.textContent = "2025–Present";
+        const h = $("#rc2-title", rc2) || $(".rc-title-wrap h3", rc2);
+        if (h) h.textContent = "Machine Learning and Geospatial Analysis for Sustainable Agriculture through Groundwater Quality Management in Sylhet, Bangladesh";
+        const exp = $("#rc2-details"); const body = exp ? $(".rc-expander-body", exp) : null;
+        if (body) {
+            let p = $("p", body); if (!p) { p = document.createElement("p"); body.prepend(p); }
+            p.textContent = "The Sylhet region of Bangladesh is a subtropical region containing alluvial aquifers and groundwater quality plays an important role in sustainable agriculture and safe drinking water. This paper assesses the potential of ground water in Sylhet, Bangladesh which consists of Sylhet city, Habiganj, Moulvibazar and Sunamganj which experiences high precipitation. Sixty shallow tube-well samples were used in the study to examine important physicochemical variables (pH, Ca²⁺, K⁺, alkalinity, SO₄²⁻, Cl⁻, NO₃⁻, Fe). This was done by measuring suitability to drinking and irrigation using hydrogeochemical data, statistical correlations, geospatial mapping and machine learning models. Piper and Gibbs diagrams revealed the predominant features to be the silicate weathering and ion exchange processes and low evaporation as rains were high. Strong correlations between alkalinity and Ca²⁺ (R² = 0.85), and Cl⁻ and NO₃⁻ (R² = 0.78) showing the low agricultural runoff. Geospatial interpolation (IDW) showed uniformly low salinity, with elevated Fe in northeastern zones which were not a threat to the crops. The total dissolved solids well predicted by ML models with Random Forest Regression (RFR; R2 = 0.95, MSE = 450.2), in particular. The parameters were WHO and BIS compliant and were safe to irrigate, promote the health of the soil, and crop production. This research contributes to SDG-6 (Clean Water and Sanitation) and SDG-15 (Life on Land) because it helps preserve the food security, access to safe water and sustainable land use. The combined ML-geospatial framework provides a capable framework of groundwater management across worldwide.";
+            p.classList.add("rc-justified", "no-hyphen-break");
+        }
+    }
+}
+
+/* =========================
+   Skills progress
+========================= */
+const skillsState = { inited: false, animated: false, bars: [], section: null, io: null };
+function initSkills() {
+    if (skillsState.inited || reducedMotion()) return;
+    const sec = skillsState.section = $("#skills");
+    if (!sec) return;
+    const containers = $$(".progress[role='progressbar']", sec);
     if (!containers.length) return;
-    skills.bars = containers.map((p) => {
+
+    skillsState.bars = containers.map(p => {
         const bar = $(".progress-bar", p);
         const cssVal = getComputedStyle(p).getPropertyValue("--val").trim();
-        const targetWidth =
-            cssVal ||
-            (p.getAttribute("aria-valuenow")
-                ? `${clamp(+p.getAttribute("aria-valuenow") || 0, 0, 100)}%`
-                : "0%");
-        bar.style.width = "0%";
-        bar.style.transition = "none";
-        const value = parseFloat(targetWidth) || 0;
+        const target = cssVal || (p.getAttribute("aria-valuenow") ? `${clamp(+p.getAttribute("aria-valuenow") || 0, 0, 100)}%` : "0%");
+        bar.style.width = "0%"; bar.style.transition = "none";
         p.setAttribute("aria-valuenow", "0");
-        return { bar, parent: p, target: targetWidth, value: clamp(value, 0, 100) };
+        return { bar, parent: p, value: parseFloat(target) || 0, target };
     });
-    skills.inited = true;
+    skillsState.inited = true;
+
+    if ("IntersectionObserver" in window) {
+        skillsState.io?.disconnect?.();
+        skillsState.io = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting && e.intersectionRatio > 0.22) { maybeAnimateSkills(); skillsState.io?.disconnect?.(); }
+            });
+        }, { threshold: [0.15, 0.22, 0.5] });
+        skillsState.io.observe(sec);
+    }
 }
-
-function animateSkillsProgress() {
-    if (!skills.inited || skills.animated || !visualsReady) return;
-    skills.animated = true;
-    const dur = prefersReducedMotion() ? 1 : 900;
-
-    skills.bars.forEach(({ bar, parent, target, value }) => {
+function animateBars() {
+    const dur = reducedMotion() ? 1 : 900;
+    skillsState.bars.forEach(({ bar, parent, value, target }) => {
         bar.style.transition = `width ${dur}ms cubic-bezier(.22,1,.36,1)`;
-        requestAnimationFrame(() => {
-            bar.style.width = target;
-        });
-
+        requestAnimationFrame(() => bar.style.width = target);
         const start = performance.now();
-        const step = (ts) => {
+        const tick = (ts) => {
             const t = Math.min(1, (ts - start) / dur);
             const eased = t < 1 ? 1 - Math.pow(1 - t, 3) : 1;
             parent.setAttribute("aria-valuenow", String(Math.round(value * eased)));
-            if (t < 1) requestAnimationFrame(step);
+            if (t < 1) requestAnimationFrame(tick);
         };
-        requestAnimationFrame(step);
+        requestAnimationFrame(tick);
     });
 }
-
-function isElemInViewport(el, thr = 0.28) {
+function elemVisible(el, thr = 0.22) {
     if (!el) return false;
-    const rect = el.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
     const vh = window.innerHeight || document.documentElement.clientHeight;
-    const visible = Math.min(rect.bottom, vh) - Math.max(rect.top, 0);
-    const ratio = visible / Math.max(rect.height, 1);
+    const visible = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+    const ratio = visible / Math.max(r.height, 1);
     return ratio >= thr;
 }
-
-function maybeTriggerSkillsProgress() {
-    initSkillsOnce();
-    if (!skills.inited || skills.animated || !visualsReady) return;
-    const activeDesktop =
-        isDesktop() && (getActiveSectionEl()?.id === "skills" || currentId === "skills");
-    if (isElemInViewport(skills.section, 0.22) || activeDesktop) animateSkillsProgress();
+function maybeAnimateSkills() {
+    if (!skillsState.inited || skillsState.animated || !visualsReady) return;
+    const activeDesk = isDesktop() && (activeSectionEl()?.id === "skills" || currentId === "skills");
+    if (elemVisible(skillsState.section, .22) || activeDesk) { skillsState.animated = true; animateBars(); }
 }
 
-function setupSkillsObserver() {
-    initSkillsOnce();
-    if (!skills.inited || skills.animated) return;
-    if ("IntersectionObserver" in window) {
-        skills.io?.disconnect?.();
-        skills.io = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((e) => {
-                    if (e.isIntersecting && e.intersectionRatio > 0.22) {
-                        if (visualsReady) {
-                            animateSkillsProgress();
-                            skills.io?.disconnect?.();
-                        }
-                    }
-                });
-            },
-            { threshold: [0.15, 0.22, 0.5] }
-        );
-        skills.io.observe(skills.section);
-    } else {
-        setTimeout(maybeTriggerSkillsProgress, 400);
-    }
-}
-
-/* ========= CONTACT FORM (EmailJS + mailto fallback) ========= */
-const EMAILJS_CFG = {
+/* =========================
+   Contact form (EmailJS + mailto fallback)
+========================= */
+const EMAILJS = {
     PUBLIC_KEY: "G5fgtKtfm0tx0NWHU",
     SERVICE_ID: "service_w4wxv6x",
     TEMPLATE_ID: "template_i56317p",
 };
 
-function initEmailJS() {
-    try {
-        if (window.emailjs?.init) {
-            emailjs.init({ publicKey: EMAILJS_CFG.PUBLIC_KEY });
-        }
-    } catch {
-        /* ignore */
-    }
+function emailjsInit() {
+    try { window.emailjs?.init?.({ publicKey: EMAILJS.PUBLIC_KEY }); } catch { }
 }
-
 function setupContactForm() {
     const form = $("#contactForm");
     const submitBtn = $("#contactSubmit");
     if (!form || !submitBtn) return;
 
-    let originalIconEl = null,
-        spinnerEl = null;
+    let iconEl = null, spinEl = null;
     const labelEl = submitBtn.querySelector("span");
-    const originalLabel = labelEl?.textContent || "Send Message";
+    const baseLabel = labelEl?.textContent || "Send Message";
 
     const busy = (on) => {
         submitBtn.disabled = on;
         submitBtn.setAttribute("aria-busy", on ? "true" : "false");
-        if (!originalIconEl) originalIconEl = submitBtn.querySelector("i");
+        if (!iconEl) iconEl = submitBtn.querySelector("i");
         if (on) {
-            // Keep a small inline spinner for form feedback; global skeleton handles page loads
-            if (!spinnerEl) {
-                spinnerEl = document.createElement("span");
-                spinnerEl.className = "spinner-border spinner-border-sm";
-                spinnerEl.setAttribute("role", "status");
-                spinnerEl.setAttribute("aria-hidden", "true");
-            }
-            if (originalIconEl && originalIconEl.isConnected) {
-                originalIconEl.replaceWith(spinnerEl);
-            } else if (!submitBtn.querySelector(".spinner-border")) {
-                submitBtn.prepend(spinnerEl);
-            }
-            if (labelEl) labelEl.textContent = "Sending...";
+            if (!spinEl) { spinEl = document.createElement("span"); spinEl.className = "spinner-border spinner-border-sm"; spinEl.setAttribute("role", "status"); spinEl.setAttribute("aria-hidden", "true"); }
+            iconEl?.replaceWith(spinEl);
+            labelEl && (labelEl.textContent = "Sending...");
         } else {
-            if (spinnerEl && spinnerEl.isConnected && originalIconEl) {
-                spinnerEl.replaceWith(originalIconEl);
-            } else if (spinnerEl && spinnerEl.parentNode) {
-                spinnerEl.parentNode.removeChild(spinnerEl);
-            }
-            if (labelEl) labelEl.textContent = originalLabel;
+            spinEl && iconEl && spinEl.replaceWith(iconEl);
+            labelEl && (labelEl.textContent = baseLabel);
         }
     };
 
-    const serialize = (formEl) => {
-        const fd = new FormData(formEl);
-        const obj = {};
-        fd.forEach((v, k) => (obj[k] = String(v).trim()));
-        return obj;
-    };
+    const serialize = (f) => { const fd = new FormData(f); const o = {}; fd.forEach((v, k) => o[k] = String(v).trim()); return o; };
     const isEmail = (v) => /^\S+@\S+\.\S+$/.test(v);
 
-    form.addEventListener(
-        "invalid",
-        (e) => {
-            const t = e.target;
-            t.classList.add("is-invalid");
-            form.classList.add("was-validated");
-        },
-        true
-    );
+    form.addEventListener("invalid", (e) => {
+        const t = e.target;
+        t.classList.add("is-invalid");
+        form.classList.add("was-validated");
+    }, true);
 
-    form.addEventListener(
-        "input",
-        (e) => {
-            const t = e.target;
-            if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement)) return;
-            if (t.checkValidity()) t.classList.remove("is-invalid");
-        },
-        { passive: true }
-    );
-
-    const tryEndpoint = async (payload) => {
-        try {
-            initEmailJS();
-            if (!window.emailjs?.send) throw new Error("EmailJS not available");
-            const params = {
-                from_name: payload.name,
-                from_email: payload.email,
-                message: payload.message,
-                sentAt: payload.sentAt,
-            };
-            const res = await emailjs.send(EMAILJS_CFG.SERVICE_ID, EMAILJS_CFG.TEMPLATE_ID, params);
-            return { ok: true, emailjsStatus: res?.status || 200 };
-        } catch (err) {
-            return { ok: false, reason: "emailjs-error", error: err };
+    form.addEventListener("input", (e) => {
+        const t = e.target;
+        if ((t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) && t.checkValidity()) {
+            t.classList.remove("is-invalid");
         }
+    }, { passive: true });
+
+    const tryEmailJS = async (payload) => {
+        try {
+            emailjsInit();
+            if (!window.emailjs?.send) throw new Error("EmailJS not available");
+            const params = { from_name: payload.name, from_email: payload.email, message: payload.message, sentAt: payload.sentAt };
+            const res = await emailjs.send(EMAILJS.SERVICE_ID, EMAILJS.TEMPLATE_ID, params);
+            return { ok: true, status: res?.status || 200 };
+        } catch (err) { return { ok: false, error: err }; }
     };
 
-    const fallbackMailto = (payload) => {
+    const mailtoFallback = (p) => {
         const to = form.dataset.mailto?.trim() || "rahat3286@gmail.com";
-        const subject = encodeURIComponent(`Portfolio message from ${payload.name}`);
-        const body = encodeURIComponent(`${payload.message}\n\n— ${payload.name} <${payload.email}>`);
+        const subject = encodeURIComponent(`Portfolio message from ${p.name}`);
+        const body = encodeURIComponent(`${p.message}\n\n— ${p.name} <${p.email}>`);
         location.href = `mailto:${to}?subject=${subject}&body=${body}`;
         return { ok: true, fallback: "mailto" };
     };
@@ -763,479 +566,324 @@ function setupContactForm() {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // Honeypot
         const hp = form.querySelector(".hp-field");
-        if (hp && hp.value) {
-            showToast({
-                type: "success",
-                title: "Message received",
-                message: "Thanks! (bot trap passed)",
-            });
-            form.reset();
-            form.classList.remove("was-validated");
-            $$(".is-invalid", form).forEach((el) => el.classList.remove("is-invalid"));
+        if (hp && hp.value) { // Honey-pot: silently accept
+            toast({ type: "success", title: "Message received", message: "Thanks! (bot trap passed)" });
+            form.reset(); form.classList.remove("was-validated");
+            $$(".is-invalid", form).forEach(el => el.classList.remove("is-invalid"));
             return;
         }
 
         form.classList.add("was-validated");
         if (!form.checkValidity()) {
-            const invalid = form.querySelector(":invalid");
-            invalid?.classList.add("is-invalid");
-            invalid?.focus({ preventScroll: true });
+            const inv = form.querySelector(":invalid");
+            inv?.classList.add("is-invalid");
+            inv?.focus({ preventScroll: true });
             return;
         }
 
         const data = serialize(form);
         if (!isEmail(data.email)) {
-            showToast({
-                type: "danger",
-                title: "Invalid email",
-                message: "Please provide a valid email address.",
-            });
-            const el = $("#email");
-            el?.classList.add("is-invalid");
-            el?.focus({ preventScroll: true });
+            toast({ type: "danger", title: "Invalid email", message: "Please provide a valid email address." });
+            const el = $("#email"); el?.classList.add("is-invalid"); el?.focus({ preventScroll: true });
             return;
         }
 
         busy(true);
-        const payload = {
-            name: data.name,
-            email: data.email,
-            message: data.message,
-            sentAt: new Date().toISOString(),
-        };
-
-        let result = await tryEndpoint(payload);
-        if (!result.ok) result = fallbackMailto(payload);
-
+        const payload = { name: data.name, email: data.email, message: data.message, sentAt: new Date().toISOString() };
+        let result = await tryEmailJS(payload);
+        if (!result.ok) result = mailtoFallback(payload);
         busy(false);
 
         if (result.ok) {
-            showToast({
-                type: "success",
-                title: "Sent",
-                message:
-                    result.fallback === "mailto"
-                        ? "Opening your mail client… If it doesn't open, please email me directly."
-                        : "Your message was sent successfully. I’ll get back to you soon.",
-            });
-            form.reset();
-            form.classList.remove("was-validated");
-            $$(".is-invalid", form).forEach((el) => el.classList.remove("is-invalid"));
+            toast({ type: "success", title: "Sent", message: result.fallback === "mailto" ? "Opening your mail client… If it doesn’t open, email me directly." : "Your message was sent successfully. I’ll get back to you soon." });
+            form.reset(); form.classList.remove("was-validated");
+            $$(".is-invalid", form).forEach(el => el.classList.remove("is-invalid"));
         } else {
-            showToast({
-                type: "danger",
-                title: "Couldn’t send",
-                message: "Please try again in a moment or email me directly at rahat3286@gmail.com.",
-            });
+            toast({ type: "danger", title: "Couldn’t send", message: "Please try again or email me directly at rahat3286@gmail.com." });
         }
     });
 }
 
-/* ========= PHONE + EMAIL LINKS ENHANCEMENTS ========= */
-function setupTelToasts() {
-    document.addEventListener(
-        "click",
-        async (e) => {
-            const telLink = e.target.closest?.('a[href^="tel:"]');
-            if (!telLink) return;
-            const num = (telLink.getAttribute("href") || "").replace("tel:", "").trim();
-            if (!num) return;
-            try {
-                if (navigator.clipboard?.writeText) {
-                    await navigator.clipboard.writeText(num);
-                    showToast({
-                        type: "info",
-                        title: "Number copied",
-                        message: "Phone number copied to clipboard. Opening dialer…",
-                    });
-                }
-            } catch {
-                /* ignore copy errors */
-            }
-        },
-        { passive: false }
-    );
-}
-
-function setupEmailLinks() {
-    const isMobileUA = () =>
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    const openGmailCompose = ({ to, subject = "", body = "" }) => {
-        const enc = (s) => encodeURIComponent(s || "");
-        const web = `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(to)}&su=${enc(subject)}&body=${enc(body)}`;
-
-        // attempt to copy address to clipboard for convenience
+/* =========================
+   Phone + Email convenience
+========================= */
+function setupTelCopy() {
+    document.addEventListener("click", async (e) => {
+        const tel = e.target.closest?.('a[href^="tel:"]'); if (!tel) return;
+        const num = (tel.getAttribute("href") || "").replace("tel:", "").trim(); if (!num) return;
         try {
-            navigator.clipboard?.writeText?.(to);
-        } catch {
-            /* ignore */
-        }
+            await navigator.clipboard?.writeText?.(num);
+            toast({ type: "info", title: "Number copied", message: "Opening dialer…" });
+        } catch {/* ignore */ }
+    }, { passive: false });
+}
+function setupEmailLinks() {
+    const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // Desktop: open Gmail web compose directly
-        if (!isMobileUA()) {
+    function openGmail({ to, subject = "", body = "" }) {
+        const enc = encodeURIComponent;
+        const web = `https://mail.google.com/mail/?view=cm&fs=1&to=${enc(to)}&su=${enc(subject)}&body=${enc(body)}`;
+        try { navigator.clipboard?.writeText?.(to); } catch { }
+
+        if (!isMobile()) {
             window.open(web, "_blank", "noopener,noreferrer");
-            showToast({
-                type: "info",
-                title: "Compose email",
-                message: "Opening Gmail on the web. Address copied to clipboard.",
-            });
+            toast({ type: "info", title: "Compose email", message: "Opening Gmail on the web. Address copied." });
             return;
         }
 
-        // Mobile: try Gmail app deep link first, then fall back to web Gmail compose
         const isiOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
         const appUrl = isiOS
             ? `googlegmail://co?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}`
             : `intent://co?to=${enc(to)}&subject=${enc(subject)}&body=${enc(body)}#Intent;scheme=googlegmail;package=com.google.android.gm;end`;
 
-        let didHide = false;
-        const cleanup = () => document.removeEventListener("visibilitychange", onHide);
-        const onHide = () => {
-            if (document.hidden) {
-                didHide = true;
-                cleanup();
-            }
-        };
+        let hidden = false;
+        const onHide = () => { if (document.hidden) { hidden = true; document.removeEventListener("visibilitychange", onHide); } };
         document.addEventListener("visibilitychange", onHide, { passive: true });
 
-        const timer = setTimeout(() => {
-            cleanup();
-            if (!didHide) {
-                // App not available / blocked → fall back to Gmail web
-                window.location.href = web;
-            }
-        }, 800);
+        setTimeout(() => { document.removeEventListener("visibilitychange", onHide); if (!hidden) window.location.href = web; }, 850);
 
         try {
             window.location.href = appUrl;
-            showToast({
-                type: "info",
-                title: "Compose email",
-                message: "Trying to open Gmail app… Address copied to clipboard.",
-            });
-        } catch {
-            clearTimeout(timer);
-            cleanup();
-            window.location.href = web;
+            toast({ type: "info", title: "Compose email", message: "Trying Gmail app… Address copied." });
+        } catch { window.location.href = web; }
+    }
+
+    document.addEventListener("click", (e) => {
+        const mail = e.target.closest?.('a[href^="mailto:"]') || e.target.closest?.('a[data-kind="email"]');
+        if (!mail) return;
+        e.preventDefault();
+        const data = mail.getAttribute("data-email")?.trim();
+        const href = mail.getAttribute("href") || "";
+        const to = data || href.replace(/^mailto:/i, "").split("?")[0] || "rahat3286@gmail.com";
+        let subject = "", body = "";
+        if (href.includes("?")) {
+            const qs = new URLSearchParams(href.split("?")[1]);
+            subject = qs.get("subject") || qs.get("su") || "";
+            body = qs.get("body") || "";
         }
-    };
-
-    document.addEventListener(
-        "click",
-        (e) => {
-            const mailEl =
-                e.target.closest?.('a[href^="mailto:"]') ||
-                e.target.closest?.('a[data-kind="email"]');
-            if (!mailEl) return;
-
-            e.preventDefault();
-            const dataEmail = mailEl.getAttribute("data-email")?.trim();
-            const href = mailEl.getAttribute("href") || "";
-            let to = dataEmail || href.replace(/^mailto:/i, "").split("?")[0] || "rahat3286@gmail.com";
-
-            // Optional: extract subject/body from href if present
-            let subject = "";
-            let body = "";
-            if (href.includes("?")) {
-                const qs = new URLSearchParams(href.split("?")[1]);
-                subject = qs.get("subject") || qs.get("su") || "";
-                body = qs.get("body") || "";
-            }
-
-            openGmailCompose({ to, subject, body });
-        },
-        { passive: false }
-    );
+        openGmail({ to, subject, body });
+    }, { passive: false });
 }
 
-/* ========= TYPEWRITER ========= */
-let typewriterState = { started: false, paused: false, tid: 0 };
-function startTypewriter(el, phrases) {
-    if (!el || !phrases?.length) return;
-    // Make it accessible: announce changes politely
+/* =========================
+   Typewriter (polite)
+========================= */
+const typeState = { started: false, paused: false, tid: 0 };
+function startTypewriter(el, list) {
+    if (!el || !list?.length) return;
     el.setAttribute("aria-live", "polite");
     el.setAttribute("aria-atomic", "true");
+    if (reducedMotion()) { el.textContent = list[0]; return; }
 
-    if (prefersReducedMotion()) {
-        el.textContent = phrases[0];
-        return;
-    }
-    const TYPE_MS = 46,
-        DEL_MS = 30,
-        HOLD_MS = 1000;
-    let pi = 0,
-        ci = 0,
-        typing = true;
-
+    const TYPE = 46, DEL = 30, HOLD = 1000;
+    let pi = 0, ci = 0, typing = true;
     function step() {
-        if (typewriterState.paused) return;
-        const p = phrases[pi];
+        if (typeState.paused) return;
+        const p = list[pi];
         if (typing) {
-            if (ci < p.length) {
-                ci++;
-                el.textContent = p.slice(0, ci);
-                typewriterState.tid = setTimeout(step, TYPE_MS);
-            } else {
-                typing = false;
-                typewriterState.tid = setTimeout(step, HOLD_MS);
-            }
+            if (ci < p.length) { ci++; el.textContent = p.slice(0, ci); typeState.tid = setTimeout(step, TYPE); }
+            else { typing = false; typeState.tid = setTimeout(step, HOLD); }
         } else {
-            if (ci > 0) {
-                ci--;
-                el.textContent = p.slice(0, ci);
-                typewriterState.tid = setTimeout(step, DEL_MS);
-            } else {
-                typing = true;
-                pi = (pi + 1) % phrases.length;
-                typewriterState.tid = setTimeout(step, 260);
-            }
+            if (ci > 0) { ci--; el.textContent = p.slice(0, ci); typeState.tid = setTimeout(step, DEL); }
+            else { typing = true; pi = (pi + 1) % list.length; typeState.tid = setTimeout(step, 240); }
         }
     }
-    typewriterState.started = true;
-    typewriterState.paused = false;
-    step();
+    typeState.started = true; typeState.paused = false; step();
 
     document.addEventListener("visibilitychange", () => {
-        if (!typewriterState.started) return;
-        clearTimeout(typewriterState.tid);
-        if (document.visibilityState === "hidden") {
-            typewriterState.paused = true;
-        } else if (typewriterState.paused) {
-            typewriterState.paused = false;
-            typewriterState.tid = setTimeout(step, 140);
-        }
+        clearTimeout(typeState.tid);
+        if (document.visibilityState === "hidden") { typeState.paused = true; }
+        else if (typeState.paused) { typeState.paused = false; typeState.tid = setTimeout(step, 140); }
     });
 }
 function maybeStartTypewriter() {
-    if (typewriterState.started || !visualsReady || !typewriterEl) return;
-    const phrases =
-        typewriterEl.dataset.phrases
-            ?.split("|")
-            .map((s) => s.trim())
-            .filter(Boolean) || [
-            "An Environmental Expert",
-            "A GIS Enthusiast",
-            "A Research Aspirant",
-            "A Data Analyst",
-        ];
+    if (typeState.started || !visualsReady || !typewriterEl) return;
+    const phrases = typewriterEl.dataset.phrases?.split("|").map(s => s.trim()).filter(Boolean)
+        || ["An Environmental Expert", "A GIS Enthusiast", "A Research Aspirant", "A Data Analyst"];
     startTypewriter(typewriterEl, phrases);
 }
 
-/* ========= HERO FALLBACK IMG ========= */
-function installHeroFallbacks() {
+/* =========================
+   Hero image fallback
+========================= */
+function installHeroFallback() {
     if (!heroImg) return;
     const tried = new Set();
     const candidates = [];
-    const currentSrc = heroImg.getAttribute("src");
-    if (currentSrc) candidates.push(currentSrc);
-    ["hero-image.png", "hero-figure.png"].forEach((p) => {
-        if (p && p !== currentSrc) candidates.push(p);
-    });
+    const cur = heroImg.getAttribute("src");
+    if (cur) candidates.push(cur);
+    ["hero-image.png", "hero-figure.png"].forEach(p => { if (p && p !== cur) candidates.push(p); });
     const tryNext = () => {
-        const next = candidates.find((c) => !tried.has(c));
+        const next = candidates.find(c => !tried.has(c));
         if (!next) return;
         tried.add(next);
         heroImg.src = next;
     };
-    heroImg.addEventListener("error", tryNext, { once: false });
-    if (!currentSrc) tryNext();
+    heroImg.addEventListener("error", tryNext);
+    if (!cur) tryNext();
 }
 
-/* ========= BRAND TOP ========= */
-let brandTopInitial = brandTop ? brandTop.innerHTML : "";
-function syncBrandTop() {
-    if (!brandTop) return;
-    if (isDesktop()) brandTop.innerHTML = brandTopInitial || "Rahat";
-    else brandTop.textContent = "Rahat";
-}
-
-/* ========= CONTACT TEXT AUTO-FIT ========= */
-let fitRO = null,
-    fitRAF = 0;
-function wrapForFit(scopeEl) {
-    if (!scopeEl) return null;
-    scopeEl.setAttribute("data-fit-scope", "");
-    let inner = scopeEl.querySelector("[data-fit]");
+/* =========================
+   Fit contact text
+========================= */
+let fitRAF = 0, fitRO = null;
+function wrapFit(scope) {
+    if (!scope) return null;
+    scope.setAttribute("data-fit-scope", "");
+    let inner = scope.querySelector("[data-fit]");
     if (inner) return inner;
-    inner = document.createElement("span");
-    inner.setAttribute("data-fit", "");
-    while (scopeEl.firstChild) inner.appendChild(scopeEl.firstChild);
-    scopeEl.appendChild(inner);
+    inner = document.createElement("span"); inner.setAttribute("data-fit", "");
+    while (scope.firstChild) inner.appendChild(scope.firstChild);
+    scope.appendChild(inner);
     return inner;
 }
-function measureFit(scopeEl) {
-    const inner = wrapForFit(scopeEl);
-    if (!inner) return;
+function measureFit(scope) {
+    const inner = wrapFit(scope); if (!inner) return;
     inner.style.setProperty("--fit", "1");
-    const available =
-        Math.max(1, scopeEl.clientWidth || scopeEl.getBoundingClientRect().width || 1);
+    const avail = Math.max(1, scope.clientWidth || scope.getBoundingClientRect().width || 1);
     const natural = Math.max(inner.scrollWidth, inner.getBoundingClientRect().width || 1);
-    const scale = natural <= 1 ? 1 : clamp(available / natural, 0.6, 1.05);
+    const scale = natural <= 1 ? 1 : clamp(avail / natural, .6, 1.05);
     inner.style.setProperty("--fit", String(scale));
 }
 function fitContactText() {
     cancelAnimationFrame(fitRAF);
     fitRAF = requestAnimationFrame(() => {
-        $$(".ci-content .ci-label, .ci-content .ci-value").forEach((el) => measureFit(el));
+        $$(".ci-content .ci-label, .ci-content .ci-value").forEach(measureFit);
     });
 }
-function initContactAutoFit() {
+function initContactFit() {
     fitContactText();
     try {
         if (!fitRO && "ResizeObserver" in window) {
             fitRO = new ResizeObserver(() => fitContactText());
-            $$(".ci-item").forEach((item) => fitRO.observe(item));
+            $$(".ci-item").forEach(it => fitRO.observe(it));
         }
-    } catch {
-        /* ignore */
-    }
+    } catch { }
     window.addEventListener("resize", fitContactText, { passive: true });
     window.addEventListener("orientationchange", fitContactText, { passive: true });
     if (document.fonts?.ready) document.fonts.ready.then(() => fitContactText());
     else setTimeout(fitContactText, 300);
 }
 
-/* ========= SCROLL PERSISTENCE ========= */
-function readSavedScroll() {
+/* =========================
+   Scroll persistence
+========================= */
+function readScrollState() {
     try {
-        const raw = sessionStorage.getItem(SCROLL_KEY);
+        const raw = sessionStorage.getItem(STORAGE_SCROLL);
         return raw ? JSON.parse(raw) : null;
-    } catch {
-        return null;
-    }
+    } catch { return null; }
 }
-let saveScrollQueued = false;
-let saveScrollRAF2 = 0;
+let saveQueued = false, saveRAF = 0;
 function saveScrollState() {
-    if (saveScrollQueued) return;
-    saveScrollQueued = true;
-    cancelAnimationFrame(saveScrollRAF2);
-    saveScrollRAF2 = requestAnimationFrame(() => {
-        saveScrollQueued = false;
+    if (saveQueued) return;
+    saveQueued = true;
+    cancelAnimationFrame(saveRAF);
+    saveRAF = requestAnimationFrame(() => {
+        saveQueued = false;
         const state = {
             ts: Date.now(),
             mode: isDesktop() ? "desktop" : "mobile",
             id: currentId || sections[0]?.id || "home",
             scrollTop: 0,
-            version: 7,
+            version: 8
         };
         if (isDesktop()) {
-            const active = getActiveSectionEl();
-            state.scrollTop = active?.scrollTop || 0;
+            state.scrollTop = activeSectionEl()?.scrollTop || 0;
         } else {
             state.scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
             let best = { id: state.id, top: Infinity };
-            sections.forEach((sec) => {
+            sections.forEach(sec => {
                 const t = Math.abs(sec.getBoundingClientRect().top);
                 if (t < best.top) best = { id: sec.id, top: t };
             });
             state.id = best.id || state.id;
         }
-        try {
-            sessionStorage.setItem(SCROLL_KEY, JSON.stringify(state));
-        } catch {
-            /* ignore */
-        }
+        try { sessionStorage.setItem(STORAGE_SCROLL, JSON.stringify(state)); } catch { }
     });
 }
-function restoreSavedScrollIfAny() {
-    const saved = readSavedScroll();
-    if (!saved) return;
-    const targetId =
-        (saved.id && document.getElementById(saved.id)) ? saved.id : (currentId || sections[0]?.id);
-    showSection(targetId, true, { preserveScroll: true });
+function restoreSavedScroll() {
+    const saved = readScrollState();
+    const startId =
+        (location.hash && document.getElementById(location.hash.slice(1)) && location.hash.slice(1)) ||
+        saved?.id || sections[0]?.id || "home";
+
+    showSection(startId, true, { preserveScroll: true });
     if (isDesktop()) {
-        const active = getActiveSectionEl();
-        if (active) active.scrollTop = Math.max(0, Number(saved.scrollTop) || 0);
+        const a = activeSectionEl();
+        if (a) a.scrollTop = Math.max(0, Number(saved?.scrollTop) || 0);
     } else {
-        window.scrollTo({
-            top: Math.max(0, Number(saved.scrollTop) || 0),
-            behavior: "auto",
-        });
+        window.scrollTo({ top: Math.max(0, Number(saved?.scrollTop) || 0), behavior: "auto" });
     }
 }
 
-/* ========= BACK TO TOP ========= */
-(function backToTop() {
+/* =========================
+   Back to Top
+========================= */
+(function backToTopInit() {
     if (!backToTopBtn) return;
-    const SHOW_AFTER_PX = 250;
-    const MAX_WIDTH_TO_SHOW = 992;
-
-    function computeProgress() {
-        const doc = document.documentElement;
-        const scrollTop = window.scrollY || doc.scrollTop || 0;
-        const maxScroll = Math.max(1, doc.scrollHeight - doc.clientHeight);
-        const pct = Math.min(100, Math.max(0, (scrollTop / maxScroll) * 100));
-        return { scrollTop, pct };
-    }
+    const SHOW_AT = 250, MAX_W = 992;
     let ticking = false;
-    function update() {
-        const { scrollTop, pct } = computeProgress();
-        const shouldShow = window.innerWidth < MAX_WIDTH_TO_SHOW && scrollTop > SHOW_AFTER_PX;
-        backToTopBtn.classList.toggle("show", shouldShow);
+
+    const compute = () => {
+        const doc = document.documentElement;
+        const st = window.scrollY || doc.scrollTop || 0;
+        const max = Math.max(1, doc.scrollHeight - doc.clientHeight);
+        return { st, pct: Math.min(100, Math.max(0, (st / max) * 100)) };
+    };
+    const update = () => {
+        const { st, pct } = compute();
+        const show = window.innerWidth < MAX_W && st > SHOW_AT;
+        backToTopBtn.classList.toggle("show", show);
         backToTopBtn.style.setProperty("--p", pct.toFixed(2) + "%");
-    }
-    function queueUpdate() {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(() => {
-            update();
-            ticking = false;
-        });
-    }
+    };
+    const queue = () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); };
 
-    backToTopBtn.addEventListener("click", () => {
-        window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-    });
-
-    window.addEventListener("scroll", queueUpdate, { passive: true });
-    window.addEventListener("resize", queueUpdate, { passive: true });
+    backToTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: reducedMotion() ? "auto" : "smooth" }));
+    window.addEventListener("scroll", queue, { passive: true });
+    window.addEventListener("resize", queue, { passive: true });
     window.addEventListener("load", update, { once: true });
 })();
 
-/* ========= EVENTS (NAV + MENU + HASH) ========= */
-// Desktop sidebar nav
-sidebar?.addEventListener(
-    "click",
-    (e) => {
-        const link = e.target.closest(".nav-link");
-        if (!link) return;
-        const id = getTargetFrom(link);
-        if (!id) return;
-        e.preventDefault();
-        showSection(id, true);
-    },
-    { passive: false }
-);
+/* =========================
+   Navigation wiring
+========================= */
+// Desktop: click navigation
+sidebar?.addEventListener("click", (e) => {
+    const link = e.target.closest(".nav-link"); if (!link) return;
+    const id = getTargetFrom(link); if (!id) return;
+    e.preventDefault();
+    showSection(id, true);
+}, { passive: false });
+
+// Desktop: **Tab to switch section** (fix #3)
+// When a sidebar link receives focus via keyboard, navigate immediately.
+sidebarLinks.forEach(a => {
+    a.addEventListener("focus", () => {
+        if (!isDesktop()) return;
+        const id = getTargetFrom(a); if (!id) return;
+        showSection(id, true, { preserveScroll: true });
+    });
+});
 
 // Mobile slider nav
-sliderItemsWrap?.addEventListener(
-    "click",
-    (e) => {
-        const btn = e.target.closest(".slider-item");
-        if (!btn) return;
-        const id = getTargetFrom(btn);
-        if (!id) return;
-        e.stopPropagation();
-        showSection(id, true);
-        if (!isDesktop() && rightSlider?.dataset.open === "true") setMenuOpen(false);
-    },
-    { passive: false }
-);
+sliderItemsBox?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".slider-item"); if (!btn) return;
+    const id = getTargetFrom(btn); if (!id) return;
+    e.stopPropagation();
+    showSection(id, true);
+    if (!isDesktop() && rightSlider?.dataset.open === "true") setMenuOpen(false);
+}, { passive: false });
 
 // Keyboard activation on slider items
-sliderItems.forEach((item) => {
-    item.addEventListener("keydown", (e) => {
+sliderItems.forEach(it => {
+    it.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            const id = getTargetFrom(item);
-            if (id) {
-                showSection(id, true);
-                if (!isDesktop() && rightSlider?.dataset.open === "true") setMenuOpen(false);
-            }
+            const id = getTargetFrom(it); if (!id) return;
+            showSection(id, true);
+            if (!isDesktop() && rightSlider?.dataset.open === "true") setMenuOpen(false);
         }
     });
 });
@@ -1247,152 +895,139 @@ hamburger?.addEventListener("click", (e) => {
     setMenuOpen(!(rightSlider?.dataset.open === "true"));
 });
 
-// Click outside to close mobile menu
-document.addEventListener(
-    "click",
-    (e) => {
-        if (
-            rightSlider?.dataset.open === "true" &&
-            !rightSlider.contains(e.target) &&
-            !hamburger.contains(e.target)
-        ) {
-            setMenuOpen(false);
-        }
-    },
-    { passive: true }
-);
+// outside click closes menu
+document.addEventListener("click", (e) => {
+    if (rightSlider?.dataset.open === "true" && !rightSlider.contains(e.target) && !hamburger.contains(e.target)) {
+        setMenuOpen(false);
+    }
+}, { passive: true });
 
-// Escape to close mobile menu
-document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && rightSlider?.dataset.open === "true") setMenuOpen(false);
+// Escape closes menu
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && rightSlider?.dataset.open === "true") setMenuOpen(false); });
+
+// Skip link: on desktop, route to section
+skipLink?.addEventListener("click", (e) => {
+    const href = skipLink.getAttribute("href") || "";
+    const id = href.startsWith("#") ? href.slice(1) : "";
+    if (!id) return;
+    if (isDesktop() && document.getElementById(id)?.classList.contains("section")) {
+        e.preventDefault();
+        showSection(id, true);
+    }
 });
 
-// Skip-link safeguard
-if (skipLink) {
-    skipLink.addEventListener("click", (e) => {
-        const rawHref = skipLink.getAttribute("href") || "";
-        const id = rawHref.startsWith("#") ? rawHref.slice(1) : "";
-        if (!id) return;
-        if (id === "main-content") {
-            requestAnimationFrame(() => mainContent?.focus?.({ preventScroll: true }));
-            return;
-        }
-        if (isDesktop() && document.getElementById(id)?.classList.contains("section")) {
-            e.preventDefault();
-            showSection(id, true);
-        }
-    });
-}
-
-// Hash navigation
+/* Hash navigation */
 window.addEventListener("hashchange", () => {
     const id = location.hash?.slice(1);
     if (id && document.getElementById(id)) showSection(id, false);
 });
 
-// Any element with [data-scroll-to]
-document.addEventListener(
-    "click",
-    (e) => {
-        const go = e.target.closest?.("[data-scroll-to]");
-        if (!go) return;
-        const id = go.getAttribute("data-scroll-to");
-        if (!id) return;
-        e.preventDefault();
-        showSection(id, true);
-    },
-    { passive: false }
-);
-
-/* ========= RESIZE ========= */
+/* =========================
+   Resize / Mode init
+========================= */
 let resizeRAF = 0;
 function onResize() {
     cancelAnimationFrame(resizeRAF);
     resizeRAF = requestAnimationFrame(() => {
-        const nowDesktop = isDesktop();
-        if (nowDesktop !== wasDesktop) {
-            const saved = readSavedScroll();
-            initMode({
-                initialId: saved?.id || currentId || sections[0]?.id || "home",
-                preserveScroll: true,
-            });
-            restoreSavedScrollIfAny();
+        const now = isDesktop();
+        if (now !== wasDesktop) {
+            const saved = readScrollState();
+            // re-init layout without losing scrolls
+            initMode({ initialId: saved?.id, preserveScroll: true });
+            restoreSavedScroll();
         } else {
-            applyDynamicHeadingClearance();
+            applyHeadingClearance();
         }
-        maybeTriggerSkillsProgress();
-        adjustOpenResearchExpander(); // CSS handles 80% height; keep call as no-op for safety
-        wasDesktop = nowDesktop;
+        maybeAnimateSkills();
+        wasDesktop = now;
         syncBrandTop();
         fitContactText();
     });
 }
-window.addEventListener("resize", onResize, { passive: true });
+function initMode({ initialId = null, preserveScroll = false } = {}) {
+    const startId =
+        (location.hash && document.getElementById(location.hash.slice(1)) && location.hash.slice(1)) ||
+        initialId || sections[0]?.id || "home";
 
-/* ========= INIT ========= */
+    if (isDesktop()) {
+        sections.forEach(s => s.dataset.active = "false");
+        const t = document.getElementById(startId);
+        if (t) { t.dataset.active = "true"; if (!preserveScroll) restoreSectionScroll(t); }
+        window.scrollTo(0, 0);
+    } else if (!preserveScroll) {
+        document.getElementById(startId)?.scrollIntoView({ block: "start" });
+    }
+
+    currentId = startId;
+    syncNavUI(startId);
+    setupSectionObserver();
+    applyHeadingClearance();
+
+    if (isDesktop() && rightSlider?.dataset.open === "true") {
+        setMenuOpen(false, { animate: false, focus: false, persist: false });
+    }
+    syncBrandTop();
+}
+
+/* =========================
+   Boot
+========================= */
 window.addEventListener("DOMContentLoaded", () => {
-    playTo(0.35, 600);
-    initEmailJS();
+    // top indicator + skeleton
+    playIndicator(.35, 600);
+    emailjsInit();
 
-    // Small delay to avoid skeleton flash on very fast loads
-    skeletonTimer = setTimeout(showSkeleton, 160);
+    // avoid skeleton flash on super-fast loads
+    skelTimer = setTimeout(showSkeleton, 140);
 
-    const saved = readSavedScroll();
+    const saved = readScrollState();
     initMode({ initialId: saved?.id, preserveScroll: true });
 
     try {
-        const shouldOpen = sessionStorage.getItem(MENU_STORAGE_KEY) === "1";
+        const shouldOpen = sessionStorage.getItem(STORAGE_MENU) === "1";
         if (shouldOpen && !isDesktop()) setMenuOpen(true, { animate: false, focus: false, persist: false });
-    } catch {
-        /* ignore */
-    }
+    } catch { }
 
     setupResearchCards();
-    setupCoreValues();
-    setupSkillsObserver();
+    initSkills();
     setupContactForm();
-    setupTelToasts();
-    setupEmailLinks(); // Gmail-first behavior for all email links
-    installHeroFallbacks();
-    initContactAutoFit();
+    setupTelCopy();
+    setupEmailLinks();
+    installHeroFallback();
+    initContactFit();
 
     if (isDesktop()) {
-        sections.forEach((sec) => sec.addEventListener("scroll", saveScrollState, { passive: true }));
+        sections.forEach(sec => sec.addEventListener("scroll", saveScrollState, { passive: true }));
     } else {
         window.addEventListener("scroll", saveScrollState, { passive: true });
     }
 
+    // Safety: if UI-ready class didn't land due to extremely quick load, ensure it's applied
     setTimeout(() => {
         if (!document.documentElement.classList.contains("ui-ready")) {
-            markUiReady();
-            applyDynamicHeadingClearance();
-            maybeStartTypewriter();
-            initSkillsOnce();
-            maybeTriggerSkillsProgress();
+            markUiReady(); applyHeadingClearance(); maybeStartTypewriter(); initSkills(); maybeAnimateSkills(); applyResearchCardPatches();
         }
-    }, 3500);
+    }, 3000);
 });
 
 window.addEventListener("load", () => {
-    clearTimeout(skeletonTimer);
-    if (!skeletonVisible) {
+    clearTimeout(skelTimer);
+    if (!skelVisible) {
         indicatorEl?.classList.remove("waiting");
-        playTo(1, 600);
-        setTimeout(
-            () => indicatorEl?.classList.remove("visible"),
-            prefersReducedMotion() ? 0 : 600
-        );
+        playIndicator(1, 600);
+        setTimeout(() => indicatorEl?.classList.remove("visible"), reducedMotion() ? 0 : 620);
         markUiReady();
-        applyDynamicHeadingClearance();
-        restoreSavedScrollIfAny();
+        applyHeadingClearance();
+        restoreSavedScroll();
         maybeStartTypewriter();
-        initSkillsOnce();
-        maybeTriggerSkillsProgress();
+        initSkills();
+        maybeAnimateSkills();
+        applyResearchCardPatches();
     } else {
         hideSkeleton();
     }
-    setTimeout(maybeTriggerSkillsProgress, 200);
-    setTimeout(fitContactText, 120);
+    setTimeout(maybeAnimateSkills, 160);
+    setTimeout(fitContactText, 100);
 });
 
 window.addEventListener("beforeunload", saveScrollState);
@@ -1400,3 +1035,6 @@ window.addEventListener("pagehide", saveScrollState);
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") saveScrollState();
 });
+
+window.addEventListener("resize", onResize, { passive: true });
+window.addEventListener("orientationchange", onResize, { passive: true });
