@@ -158,19 +158,32 @@
                                         I’m
                                         <span class="name underline" data-underline="true">
                                             Rahat
-                                        </span
-                    >
+                                        </span>
                                     </h3>
                                     <div class="hero-typewrap justify-content-center">
                                         <span id="typewriter" class="typewriter" data-phrases="An Environmental Expert|A GIS Enthusiast|A Research Aspirant|A Data Analyst"></span>
                                         <span class="type-caret" aria-hidden="true"></span>
                                     </div>
                                     <div class="hero-cta d-flex flex-wrap gap-2 mt-2 justify-content-center justify-content-lg-center justify-content-md-center">
-                                        <a class="btn btn-success btn-lg d-inline-flex align-items-center gap-2" href="assets/Rahat_CV.pdf" download>
+                                        <!-- FIX #2: Direct-download Google Drive URL + filename -->
+                                        <a
+                                            class="btn btn-success btn-lg d-inline-flex align-items-center gap-2"
+                                            href="https://drive.google.com/uc?export=download&id=1sWFrnvCw6FTTuhFwQMXMQlW5n3mE-2DE"
+                                            download="Hasibul_Rahat_CV.pdf"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
                                             <i class="bi bi-download" aria-hidden="true"></i>
                                             <span>Download CV</span>
                                         </a>
-                                        <a class="btn btn-outline-success btn-lg d-inline-flex align-items-center gap-2" href="#contact" data-scroll-to="contact">
+                                        <!-- FIX #1: Ensure robust navigation to #contact -->
+                                        <a
+                                            class="btn btn-outline-success btn-lg d-inline-flex align-items-center gap-2"
+                                            href="#contact"
+                                            role="link"
+                                            data-scroll-to="contact"
+                                            aria-label="Scroll to contact section"
+                                        >
                                             <i class="bi bi-send" aria-hidden="true"></i>
                                             <span>Get In Touch</span>
                                         </a>
@@ -213,8 +226,7 @@
                                             </span>
                                             <span class="hc-label" aria-hidden="true">
                                                 ResearchGate
-                                            </span
-                      >
+                                            </span>
                                         </a>
                                         <a
                                             class="hc-item"
@@ -308,8 +320,7 @@
                                                     <span class="chip chip-year chip-green">2025</span>
                                                     <span class="chip chip-grade chip-green">
                                                         CGPA 3.70 (7th semester)
-                                                    </span
-                          >
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -429,6 +440,7 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- /row -->
                     </div>
                 </div>
             </section>
@@ -473,22 +485,10 @@
                                             </h3>
                                         </div>
                                         <div id="rc2-subtitle" class="rc-points mt-2 d-flex flex-wrap justify-content-center gap-2" aria-label="Key methods">
-                                            <span class="chip chip-outline-success">
-                                                Groundwater Quality
-                                            </span
-                      >
-                                            <span class="chip chip-outline-success">
-                                                Machine Learning
-                                            </span
-                      >
-                                            <span class="chip chip-outline-success">
-                                                GIS / Remote Sensing
-                                            </span
-                      >
-                                            <span class="chip chip-outline-success">
-                                                Sustainable Agriculture
-                                            </span
-                      >
+                                            <span class="chip chip-outline-success">Groundwater Quality</span>
+                                            <span class="chip chip-outline-success">Machine Learning</span>
+                                            <span class="chip chip-outline-success">GIS / Remote Sensing</span>
+                                            <span class="chip chip-outline-success">Sustainable Agriculture</span>
                                         </div>
                                         <div class="rc-actions d-flex flex-wrap gap-2 justify-content-center">
                                             <button
@@ -501,9 +501,11 @@
                                                 <span>View Details</span>
                                                 <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                                             </button>
+                                            <!-- FIX #3: Direct-download link for RC2 Abstract -->
                                             <a
                                                 class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1"
-                                                href="https://example.com/abstract-ml-gwq-sylhet.pdf"
+                                                href="https://drive.google.com/uc?export=download&id=1a7sq2B2k3tSzetN95e_8SRhKeQPCxlN-"
+                                                download="Abstract-ML-GWQ-Sylhet.pdf"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -529,28 +531,18 @@
                                                         The Sylhet region of Bangladesh is a subtropical region containing alluvial aquifers and groundwater quality plays an important role in sustainable agriculture and safe drinking water. This paper assesses the potential of ground water in Sylhet, Bangladesh which consists of Sylhet city, Habiganj, Moulvibazar and Sunamganj which experiences high precipitation. Sixty shallow tube-well samples were used in the study to examine important physicochemical variables (pH, Ca²⁺, K⁺, alkalinity, SO₄²⁻, Cl⁻, NO₃⁻, Fe). This was done by measuring suitability to drinking and irrigation using hydrogeochemical data, statistical correlations, geospatial mapping and machine learning models. Piper and Gibbs diagrams revealed the predominant features to be the silicate weathering and ion exchange processes and low evaporation as rains were high. Strong correlations between alkalinity and Ca²⁺ (R² = 0.85), and Cl⁻ and NO₃⁻ (R² = 0.78) showing the low agricultural runoff. Geospatial interpolation (IDW) showed uniformly low salinity, with elevated Fe in northeastern zones which were not a threat to the crops. The total dissolved solids well predicted by ML models with Random Forest Regression (RFR; R2 = 0.95, MSE = 450.2), in particular. The parameters were WHO and BIS compliant and were safe to irrigate, promote the health of the soil, and crop production. This research contributes to SDG-6 (Clean Water and Sanitation) and SDG-15 (Life on Land) because it helps preserve the food security, access to safe water and sustainable land use. The combined ML-geospatial framework provides a capable framework of groundwater management across worldwide.
                                                     </p>
                                                     <div class="d-flex flex-wrap gap-2 mb-2 justify-content-center">
-                                                        <span class="chip chip-outline-success">
-                                                            Data Fusion
-                                                        </span
-                            >
-                                                        <span class="chip chip-outline-success">
-                                                            Model Validation
-                                                        </span
-                            >
-                                                        <span class="chip chip-outline-success">
-                                                            Risk Mapping
-                                                        </span
-                            >
-                                                        <span class="chip chip-outline-success">
-                                                            Stakeholder Readiness
-                                                        </span
-                            >
+                                                        <span class="chip chip-outline-success">Data Fusion</span>
+                                                        <span class="chip chip-outline-success">Model Validation</span>
+                                                        <span class="chip chip-outline-success">Risk Mapping</span>
+                                                        <span class="chip chip-outline-success">Stakeholder Readiness</span>
                                                     </div>
                                                 </div>
                                                 <div class="rc-expander-actions">
+                                                    <!-- FIX #3 mirror: Open Abstract (also direct-download) -->
                                                     <a
                                                         class="btn btn-success btn-sm d-inline-flex align-items-center gap-1"
-                                                        href="https://example.com/abstract-ml-gwq-sylhet.pdf"
+                                                        href="https://drive.google.com/uc?export=download&id=1a7sq2B2k3tSzetN95e_8SRhKeQPCxlN-"
+                                                        download="Abstract-ML-GWQ-Sylhet.pdf"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >
@@ -573,14 +565,8 @@
                                                 <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
                                             </div>
                                             <div class="d-flex nowrap-badges gap-2">
-                                                <span class="badge rounded-pill badge-soft-success text-nowrap">
-                                                    2024
-                                                </span
-                        >
-                                                <span class="badge rounded-pill badge-soft-muted text-nowrap">
-                                                    Research Project
-                                                </span
-                        >
+                                                <span class="badge rounded-pill badge-soft-success text-nowrap">2024</span>
+                                                <span class="badge rounded-pill badge-soft-muted text-nowrap">Research Project</span>
                                             </div>
                                         </div>
                                         <div class="rc-title-wrap d-flex flex-grow-1 align-items-center justify-content-center text-center">
@@ -593,14 +579,8 @@
                                         <div class="rc-points mt-2 d-flex flex-wrap justify-content-center gap-2" aria-label="Key themes">
                                             <span class="chip chip-outline-success">Field Research</span>
                                             <span class="chip chip-outline-success">Data Analysis</span>
-                                            <span class="chip chip-outline-success">
-                                                Environmental Assessment
-                                            </span
-                      >
-                                            <span class="chip chip-outline-success">
-                                                Water Quality Analysis
-                                            </span
-                      >
+                                            <span class="chip chip-outline-success">Environmental Assessment</span>
+                                            <span class="chip chip-outline-success">Water Quality Analysis</span>
                                         </div>
                                         <div class="rc-actions d-flex flex-wrap gap-2 justify-content-center">
                                             <button
@@ -613,9 +593,11 @@
                                                 <span>View Details</span>
                                                 <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                                             </button>
+                                            <!-- FIX #3: Direct-download link for RC1 Abstract -->
                                             <a
                                                 class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1"
-                                                href="assets/Abstract-Phytoplankton-Turag.pdf"
+                                                href="https://drive.google.com/uc?export=download&id=1t-r24szndeEvErJkz6IyibrkQvuWBhVd"
+                                                download="Abstract-Phytoplankton-Turag.pdf"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -674,24 +656,17 @@
                                                     </p>
                                                     <div class="d-flex flex-wrap gap-2 mb-2 justify-content-center">
                                                         <span class="chip chip-outline-success">CCA</span>
-                                                        <span class="chip chip-outline-success">
-                                                            Species Diversity
-                                                        </span
-                            >
-                                                        <span class="chip chip-outline-success">
-                                                            Heavy Metals
-                                                        </span
-                            >
-                                                        <span class="chip chip-outline-success">
-                                                            Chlorophyll-a
-                                                        </span
-                            >
+                                                        <span class="chip chip-outline-success">Species Diversity</span>
+                                                        <span class="chip chip-outline-success">Heavy Metals</span>
+                                                        <span class="chip chip-outline-success">Chlorophyll-a</span>
                                                     </div>
                                                 </div>
                                                 <div class="rc-expander-actions">
+                                                    <!-- FIX #3 mirror: Open Abstract (also direct-download) -->
                                                     <a
                                                         class="btn btn-success btn-sm d-inline-flex align-items-center gap-1"
-                                                        href="assets/Abstract-Phytoplankton-Turag.pdf"
+                                                        href="https://drive.google.com/uc?export=download&id=1t-r24szndeEvErJkz6IyibrkQvuWBhVd"
+                                                        download="Abstract-Phytoplankton-Turag.pdf"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >
@@ -722,13 +697,10 @@
                                                 <div class="if-icon">
                                                     <i class="bi bi-clipboard2-pulse" aria-hidden="true"></i>
                                                 </div>
-                                                <div class="fw-semibold mt-2">
-                                                    Environmental Assessment
-                                                </div>
+                                                <div class="fw-semibold mt-2">Environmental Assessment</div>
                                                 <small class="text-secondary no-hyphen-break">
                                                     Comprehensive ecosystem analysis
-                                                </small
-                        >
+                                                </small>
                                             </div>
                                             <div class="impact-feature text-center h-100">
                                                 <div class="if-icon if-icon-amber">
@@ -737,20 +709,16 @@
                                                 <div class="fw-semibold mt-2">Data Innovation</div>
                                                 <small class="text-secondary">
                                                     Multi-sensor integration approaches
-                                                </small
-                        >
+                                                </small>
                                             </div>
                                             <div class="impact-feature text-center h-100">
                                                 <div class="if-icon if-icon-teal">
                                                     <i class="bi bi-people" aria-hidden="true"></i>
                                                 </div>
-                                                <div class="fw-semibold mt-2">
-                                                    Collaborative Research
-                                                </div>
+                                                <div class="fw-semibold mt-2">Collaborative Research</div>
                                                 <small class="text-secondary">
                                                     Working with research teams
-                                                </small
-                        >
+                                                </small>
                                             </div>
                                         </div>
                                     </div>
@@ -847,7 +815,7 @@
                                             </li>
                                             <li class="skill-item">
                                                 <div class="label-row">
-                                                    <span>Data Analysis</span>
+                                                    <span>ECR Compliance</span>
                                                     <span>88%</span>
                                                 </div>
                                                 <div
@@ -996,7 +964,7 @@
                                             </li>
                                             <li class="skill-item">
                                                 <div class="label-row">
-                                                    <span>Statistical Analysis</span>
+                                                    <span>Overleaf</span>
                                                     <span>79%</span>
                                                 </div>
                                                 <div
@@ -1013,7 +981,7 @@
                                             </li>
                                             <li class="skill-item">
                                                 <div class="label-row">
-                                                    <span>Climate Data Mapping</span>
+                                                    <span>Excel</span>
                                                     <span>75%</span>
                                                 </div>
                                                 <div
@@ -1137,31 +1105,18 @@
                   environmental conservation.
                                 </p>
                                 <div class="d-flex flex-wrap justify-content-center gap-2 gap-sm-3 my-3 my-md-4">
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Environmental Consultancy
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        GIS Mapping &amp; Analysis
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Research &amp; Data Analysis
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Environmental Impact Assessments
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Climate Data Interpretation
-                                    </button>
-                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">
-                                        Sustainable Resource Management
-                                    </button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Environmental Consultancy</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">GIS Mapping &amp; Analysis</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Research &amp; Data Analysis</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Environmental Impact Assessments</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Climate Data Interpretation</button>
+                                    <button class="btn btn-outline-success rounded-pill btn-sm px-3">Sustainable Resource Management</button>
                                 </div>
                                 <div class="cta-bar mx-auto text-center">
                                     <div class="fw-semibold">Ready to Collaborate?</div>
                                     <small class="text-secondary">
                                         Let’s work together on meaningful environmental projects.
-                                    </small
-                  >
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -1286,9 +1241,7 @@
                                             <div class="icon-badge">
                                                 <i class="bi bi-send"></i>
                                             </div>
-                                            <h3 class="m-0 card-title text-success-emphasis">
-                                                Send Message
-                                            </h3>
+                                            <h3 class="m-0 card-title text-success-emphasis">Send Message</h3>
                                         </div>
                                         <form
                                             id="contactForm"
@@ -1389,17 +1342,16 @@
         <div id="toast-stack" aria-atomic="true"></div>
         <noscript>
             <div style="
-          position: fixed;
-          inset: 0;
-          z-index: 9999;
-          background: #fff;
-          border-bottom: 1px solid #ddd;
-          padding: 1rem;
-          font-family: system-ui;
-        ">
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #fff;
+        border-bottom: 1px solid #ddd;
+        padding: 1rem;
+        font-family: system-ui;
+      ">
                 <strong>JavaScript is disabled.</strong>
-                The site still works; animated
-        navigation and form enhancements are unavailable.
+                The site still works; animated navigation and form enhancements are unavailable.
             </div>
         </noscript>
         <!-- App JS (single, compact) -->
