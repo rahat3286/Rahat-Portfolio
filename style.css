@@ -571,6 +571,23 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     box-shadow: 0 14px 40px rgba(15, 77, 49, .12)
 }
 
+/* FIX: add spinner visuals */
+.skel-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #dbe7e1;
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    display: inline-block;
+    animation: skelSpin .8s linear infinite;
+}
+
+@keyframes skelSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 #page-skeleton .skel-topbar {
     position: absolute;
     top: 0;
@@ -993,6 +1010,16 @@ body[aria-busy="true"]> :not(#page-skeleton):not(#reload-indicator) {
     --bs-btn-hover-bg: var(--accent-color);
     --bs-btn-hover-border-color: var(--accent-color);
     --bs-btn-hover-color: #fff
+}
+
+/* Brand theme for solid success buttons (About Me) */
+.btn-success {
+    --bs-btn-bg: var(--accent-color);
+    --bs-btn-border-color: var(--accent-color);
+    --bs-btn-hover-bg: #276b4d;
+    --bs-btn-hover-border-color: #276b4d;
+    --bs-btn-active-bg: #235f4d;
+    --bs-btn-active-border-color: #235f4d;
 }
 
 .hero-contacts {

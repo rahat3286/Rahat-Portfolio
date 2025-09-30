@@ -1244,7 +1244,7 @@ skipLink?.addEventListener(
 );
 
 /* Global in-page section routing:
-   - Fixes “Get In Touch” buttons (and any anchor with data-scroll-to / hash)
+   - Works for new “About Me” CTA and any anchor with data-scroll-to / hash
    - Works in both desktop slide-mode and mobile scroll mode */
 document.addEventListener(
     "click",
